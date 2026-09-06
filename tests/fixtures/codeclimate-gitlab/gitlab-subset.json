@@ -1,0 +1,18 @@
+[
+  {
+    "type": "issue",
+    "check_name": "no-unused-vars",
+    "description": "'fs' is defined but never used.",
+    "fingerprint": "9f2c1a4b6d8e0f3a5c7b9d1e2f4a6b8c",
+    "severity": "major",
+    "location": { "path": "src/index.js", "lines": { "begin": 3 } }
+  },
+  {
+    "type": "issue",
+    "check_name": "no-var",
+    "description": "Unexpected var, use let or const instead.",
+    "fingerprint": "1b3d5f7a9c2e4068a1c3e5f7092b4d6e",
+    "severity": "minor",
+    "location": { "path": "src/index.js", "lines": { "begin": 11 } }
+  }
+]

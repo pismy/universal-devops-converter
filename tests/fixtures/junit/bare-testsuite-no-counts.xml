@@ -1,0 +1,4 @@
+<testsuite name="minimal">
+  <testcase name="a"/>
+  <testcase name="b"/>
+</testsuite>

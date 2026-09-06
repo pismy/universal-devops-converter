@@ -1,0 +1,49 @@
+{
+  "branches": ["main"],
+  "plugins": [
+    "@semantic-release/commit-analyzer",
+    "@semantic-release/release-notes-generator",
+    [
+      "@semantic-release/changelog",
+      {
+        "changelogFile": "CHANGELOG.md"
+      }
+    ],
+    [
+      "semantic-release-replace-plugin",
+      {
+        "replacements": [
+          {
+            "files": ["Cargo.toml", "Cargo.lock"],
+            "from": "name = \"universal-devops-converter\"\\nversion = \"[^\"]+\"",
+            "to": "name = \"universal-devops-converter\"\nversion = \"${nextRelease.version}\"",
+            "countMatches": true,
+            "results": [
+              { "file": "Cargo.toml", "hasChanged": true, "numMatches": 1, "numReplacements": 1 },
+              { "file": "Cargo.lock", "hasChanged": true, "numMatches": 1, "numReplacements": 1 }
+            ]
+          }
+        ]
+      }
+    ],
+    [
+      "@semantic-release/exec",
+      {
+        "successCmd": "bash .github/scripts/update-floating-tags.sh ${nextRelease.version} ${nextRelease.gitTag}"
+      }
+    ],
+    [
+      "@semantic-release/git",
+      {
+        "assets": ["CHANGELOG.md", "Cargo.toml", "Cargo.lock"],
+        "message": "chore(release): ${nextRelease.version} [skip ci on main]\n\n${nextRelease.notes}"
+      }
+    ],
+    [
+      "@semantic-release/github",
+      {
+        "draftRelease": true
+      }
+    ]
+  ]
+}

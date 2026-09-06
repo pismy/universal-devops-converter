@@ -1,0 +1,68 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Code Climate issue report",
+  "description": "Written by this project from the Code Climate analyzer specification (codeclimate/platform, spec/analyzers/SPEC.md), which is prose rather than a schema. Looser than the GitLab subset: categories, remediation content and column positions are allowed.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["type", "description", "check_name", "location"],
+    "properties": {
+      "type": { "const": "issue" },
+      "description": { "type": "string", "minLength": 1 },
+      "check_name": { "type": "string", "minLength": 1 },
+      "fingerprint": { "type": "string", "minLength": 1 },
+      "severity": {
+        "type": "string",
+        "enum": ["info", "minor", "major", "critical", "blocker"]
+      },
+      "categories": {
+        "type": "array",
+        "items": { "type": "string", "minLength": 1 }
+      },
+      "content": {
+        "type": "object",
+        "required": ["body"],
+        "properties": { "body": { "type": "string" } },
+        "additionalProperties": false
+      },
+      "location": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "lines": {
+            "type": "object",
+            "required": ["begin"],
+            "properties": {
+              "begin": { "type": "integer", "minimum": 1 },
+              "end": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          },
+          "positions": {
+            "type": "object",
+            "required": ["begin"],
+            "properties": {
+              "begin": { "$ref": "#/$defs/coords" },
+              "end": { "$ref": "#/$defs/coords" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  },
+  "$defs": {
+    "coords": {
+      "type": "object",
+      "required": ["line"],
+      "properties": {
+        "line": { "type": "integer", "minimum": 1 },
+        "column": { "type": "integer", "minimum": 1 }
+      },
+      "additionalProperties": false
+    }
+  }
+}

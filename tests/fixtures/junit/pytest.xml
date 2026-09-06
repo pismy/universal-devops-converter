@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<testsuites>
+  <testsuite name="pytest" errors="0" failures="1" skipped="1" tests="3" time="0.042" timestamp="2026-06-26T12:00:01.123456" hostname="runner">
+    <testcase classname="tests.test_parser" name="test_parses_simple" time="0.001"/>
+    <testcase classname="tests.test_parser" name="test_rejects_garbage" time="0.003">
+      <failure message="AssertionError: assert 0 == 1">tests/test_parser.py:18: AssertionError</failure>
+    </testcase>
+    <testcase classname="tests.test_parser" name="test_unicode" time="0.000">
+      <skipped type="pytest.skip" message="needs locale">/usr/lib/python3.12/site-packages/_pytest/python.py:123: needs locale</skipped>
+    </testcase>
+  </testsuite>
+</testsuites>

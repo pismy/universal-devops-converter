@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="5.0">
+  <file name="internal/engine/engine.go">
+    <error column="2" line="14" message="ineffectual assignment to err" severity="error" source="ineffassign"></error>
+    <error column="21" line="27" message="Error return value is not checked" severity="warning" source="errcheck"></error>
+  </file>
+</checkstyle>

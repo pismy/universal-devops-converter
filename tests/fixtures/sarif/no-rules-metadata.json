@@ -1,0 +1,22 @@
+{
+  "version": "2.1.0",
+  "runs": [
+    {
+      "tool": { "driver": { "name": "hand-rolled-linter" } },
+      "results": [
+        {
+          "ruleId": "R001",
+          "message": { "text": "Something is off here." },
+          "locations": [
+            {
+              "physicalLocation": {
+                "artifactLocation": { "uri": "file:///builds/acme/proj/src/a.ts" },
+                "region": { "startLine": 4 }
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

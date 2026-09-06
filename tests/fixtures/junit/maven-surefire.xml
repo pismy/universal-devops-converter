@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" name="com.acme.core.EngineTest" time="1.234" tests="4" errors="1" skipped="1" failures="1" timestamp="2026-06-26T12:00:00" hostname="build-01">
+  <properties>
+    <property name="java.version" value="21.0.2"/>
+    <property name="user.timezone" value="UTC"/>
+  </properties>
+  <testcase name="starts" classname="com.acme.core.EngineTest" time="0.512"/>
+  <testcase name="stopsCleanly" classname="com.acme.core.EngineTest" time="0.301">
+    <failure message="expected:&lt;true&gt; but was:&lt;false&gt;" type="org.opentest4j.AssertionFailedError">org.opentest4j.AssertionFailedError: expected:&lt;true&gt; but was:&lt;false&gt;
+	at com.acme.core.EngineTest.stopsCleanly(EngineTest.java:42)</failure>
+  </testcase>
+  <testcase name="throwsOnNull" classname="com.acme.core.EngineTest" time="0.121">
+    <error message="Unexpected NPE" type="java.lang.NullPointerException">java.lang.NullPointerException
+	at com.acme.core.Engine.start(Engine.java:17)</error>
+  </testcase>
+  <testcase name="notImplementedYet" classname="com.acme.core.EngineTest" time="0.0">
+    <skipped message="disabled until the API lands"/>
+  </testcase>
+  <system-out><![CDATA[engine booting
+]]></system-out>
+  <system-err><![CDATA[]]></system-err>
+</testsuite>

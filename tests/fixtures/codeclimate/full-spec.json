@@ -1,0 +1,26 @@
+[
+  {
+    "type": "issue",
+    "check_name": "Metrics/AbcSize",
+    "description": "Assignment Branch Condition size for process is too high.",
+    "content": { "body": "Split the method into smaller units." },
+    "categories": ["Complexity"],
+    "severity": "major",
+    "fingerprint": "4a6c8e0f2b4d6081a3c5e7f9012b3d4e",
+    "location": {
+      "path": "lib/processor.rb",
+      "positions": {
+        "begin": { "line": 22, "column": 3 },
+        "end": { "line": 58, "column": 6 }
+      }
+    }
+  },
+  {
+    "type": "issue",
+    "check_name": "Style/Documentation",
+    "description": "Missing top-level class documentation comment.",
+    "categories": ["Style"],
+    "severity": "info",
+    "location": { "path": "lib/processor.rb", "lines": { "begin": 1, "end": 1 } }
+  }
+]

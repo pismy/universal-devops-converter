@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="all">
+  <testsuite name="outer" tests="2">
+    <testsuite name="inner" tests="1">
+      <testcase name="deep" classname="Inner" time="0.01"/>
+    </testsuite>
+    <testcase name="shallow" classname="Outer" time="0.02"/>
+  </testsuite>
+</testsuites>

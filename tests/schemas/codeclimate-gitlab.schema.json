@@ -1,0 +1,38 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GitLab Code Quality report",
+  "description": "Written by this project, not upstream: GitLab documents the Code Quality contract in prose and publishes no schema. It encodes the subset GitLab actually reads, and is deliberately strict — its job is to lock the writer's output, so tighten it whenever the writer's contract tightens.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["description", "check_name", "fingerprint", "severity", "location"],
+    "properties": {
+      "type": { "const": "issue" },
+      "description": { "type": "string", "minLength": 1 },
+      "check_name": { "type": "string", "minLength": 1 },
+      "fingerprint": { "type": "string", "minLength": 1 },
+      "severity": {
+        "type": "string",
+        "enum": ["info", "minor", "major", "critical", "blocker"]
+      },
+      "location": {
+        "type": "object",
+        "required": ["path", "lines"],
+        "properties": {
+          "path": { "type": "string", "minLength": 1 },
+          "lines": {
+            "type": "object",
+            "required": ["begin"],
+            "properties": {
+              "begin": { "type": "integer", "minimum": 1 },
+              "end": { "type": "integer", "minimum": 1 }
+            },
+            "additionalProperties": false
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "additionalProperties": false
+  }
+}

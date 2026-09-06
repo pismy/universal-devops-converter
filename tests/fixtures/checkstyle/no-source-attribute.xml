@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<checkstyle version="8.36">
+  <file name="src/Legacy.java">
+    <error line="7" message="Line is longer than 100 characters."/>
+  </file>
+</checkstyle>

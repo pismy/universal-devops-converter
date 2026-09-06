@@ -1,0 +1,111 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  JUnit XML — written by this project.
+
+  There is no official JUnit XML schema. The Ant-era one (windyroad/JUnit-Schema)
+  exists but describes a contract nothing honours any more: it forbids
+  `tests`/`failures`/`time` on <testsuites>, which every modern producer emits
+  and every consumer reads, and it requires `package`, `hostname` and a
+  strictly-typed `timestamp` on every <testsuite>. Validating against it would
+  reject pytest, Jest, GoogleTest and our own output alike.
+
+  So this schema describes the *consensus* format instead: the structure is
+  pinned (what nests in what, which elements may repeat), attributes are typed
+  where a type is meaningful, and everything optional in practice is optional
+  here. It catches what validation is actually good for — broken nesting, a
+  count that is not a number, an unescaped character — without pretending the
+  ecosystem is stricter than it is.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+  <xs:element name="testsuites" type="testsuites"/>
+  <xs:element name="testsuite" type="testsuite"/>
+
+  <xs:complexType name="testsuites">
+    <xs:sequence>
+      <xs:element name="testsuite" type="testsuite" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="tests" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="failures" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="errors" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="skipped" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="disabled" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="assertions" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="time" type="xs:decimal"/>
+    <xs:attribute name="timestamp" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="testsuite">
+    <!-- A choice rather than a sequence: producers disagree on the order of
+         properties / testcase / system-out, and suites nest in some of them. -->
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="properties" type="properties"/>
+      <xs:element name="testcase" type="testcase"/>
+      <xs:element name="testsuite" type="testsuite"/>
+      <xs:element name="system-out" type="xs:string"/>
+      <xs:element name="system-err" type="xs:string"/>
+    </xs:choice>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="tests" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="failures" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="errors" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="skipped" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="disabled" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="assertions" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="time" type="xs:decimal"/>
+    <!-- Deliberately xs:string: producers emit local time, offsets, or a bare
+         date, and a stricter type would reject valid reports. -->
+    <xs:attribute name="timestamp" type="xs:string"/>
+    <xs:attribute name="hostname" type="xs:string"/>
+    <xs:attribute name="package" type="xs:string"/>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="file" type="xs:string"/>
+    <xs:attribute name="group" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="properties">
+    <xs:sequence>
+      <xs:element name="property" minOccurs="0" maxOccurs="unbounded">
+        <xs:complexType>
+          <xs:simpleContent>
+            <xs:extension base="xs:string">
+              <xs:attribute name="name" type="xs:string" use="required"/>
+              <xs:attribute name="value" type="xs:string"/>
+            </xs:extension>
+          </xs:simpleContent>
+        </xs:complexType>
+      </xs:element>
+    </xs:sequence>
+  </xs:complexType>
+
+  <xs:complexType name="testcase">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="skipped" type="problem"/>
+      <xs:element name="failure" type="problem"/>
+      <xs:element name="error" type="problem"/>
+      <xs:element name="rerunFailure" type="problem"/>
+      <xs:element name="flakyFailure" type="problem"/>
+      <xs:element name="system-out" type="xs:string"/>
+      <xs:element name="system-err" type="xs:string"/>
+    </xs:choice>
+    <xs:attribute name="name" type="xs:string" use="required"/>
+    <xs:attribute name="classname" type="xs:string"/>
+    <xs:attribute name="time" type="xs:decimal"/>
+    <xs:attribute name="assertions" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="status" type="xs:string"/>
+    <xs:attribute name="file" type="xs:string"/>
+    <xs:attribute name="line" type="xs:positiveInteger"/>
+    <xs:attribute name="group" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="problem">
+    <xs:simpleContent>
+      <xs:extension base="xs:string">
+        <xs:attribute name="message" type="xs:string"/>
+        <xs:attribute name="type" type="xs:string"/>
+      </xs:extension>
+    </xs:simpleContent>
+  </xs:complexType>
+
+</xs:schema>

@@ -1,0 +1,148 @@
+name: Publish assets
+
+# Triggered by the push of a `vX.Y.Z` tag (done by @semantic-release/git in
+# release.yml, through the RELEASE_TOKEN PAT — GITHUB_TOKEN pushes would not
+# cascade). The floating `vX` / `vX.Y` tags are filtered out by the semver
+# pattern below.
+#
+# Also manually dispatchable with an explicit tag for retries after a partial
+# failure.
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Release tag to attach assets to (e.g. v1.2.3)"
+        required: true
+        type: string
+
+concurrency:
+  group: publish-assets-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build ${{ matrix.asset }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Linux targets use musl so the binary is fully static and runs on
+          # any distro, including the minimal images CI runners are built from.
+          - target: x86_64-unknown-linux-musl
+            asset: linux-amd64
+            os: ubuntu-latest
+            use_cross: true
+          - target: aarch64-unknown-linux-musl
+            asset: linux-arm64
+            os: ubuntu-latest
+            use_cross: true
+          # Intel macOS: GitHub-hosted `macos-13` runners currently have very
+          # limited availability (jobs get stuck in the queue). Re-enable when
+          # capacity is back, or switch to a paid `macos-13-large` runner.
+          # - target: x86_64-apple-darwin
+          #   asset: darwin-amd64
+          #   os: macos-13
+          #   use_cross: false
+          - target: aarch64-apple-darwin
+            asset: darwin-arm64
+            os: macos-latest
+            use_cross: false
+          - target: x86_64-pc-windows-msvc
+            asset: windows-amd64
+            os: windows-latest
+            use_cross: false
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref_name }}
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install cross
+        if: matrix.use_cross
+        run: cargo install cross --locked
+
+      - name: Build
+        shell: bash
+        run: |
+          if [[ "${{ matrix.use_cross }}" == "true" ]]; then
+            cross build --release --locked --target ${{ matrix.target }}
+          else
+            cargo build --release --locked --target ${{ matrix.target }}
+          fi
+
+      - name: Package (Unix)
+        if: matrix.os != 'windows-latest'
+        shell: bash
+        run: |
+          NAME=udc-${{ matrix.asset }}
+          mkdir -p staging
+          cp target/${{ matrix.target }}/release/udc staging/
+          cp README.md LICENSE staging/
+          tar -czf "${NAME}.tar.gz" -C staging .
+          echo "ARCHIVE=${NAME}.tar.gz" >> "$GITHUB_ENV"
+
+      - name: Package (Windows)
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          NAME=udc-${{ matrix.asset }}
+          mkdir -p staging
+          cp target/${{ matrix.target }}/release/udc.exe staging/
+          cp README.md LICENSE staging/
+          7z a "${NAME}.zip" ./staging/*
+          echo "ARCHIVE=${NAME}.zip" >> "$GITHUB_ENV"
+
+      # The install scripts verify this before unpacking, so a truncated or
+      # tampered download fails loudly instead of installing a broken binary.
+      - name: Checksum
+        shell: bash
+        run: |
+          if command -v sha256sum >/dev/null; then
+            sha256sum "$ARCHIVE" > "${ARCHIVE}.sha256"
+          else
+            shasum -a 256 "$ARCHIVE" > "${ARCHIVE}.sha256"
+          fi
+          cat "${ARCHIVE}.sha256"
+
+      - name: Upload assets to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload "$TAG" "$ARCHIVE" "${ARCHIVE}.sha256" \
+            --clobber --repo "${{ github.repository }}"
+
+  finalize:
+    name: Publish release (un-draft)
+    # Runs only after every matrix `build` job succeeded. If any platform
+    # failed, the release stays as a draft so the user can investigate and
+    # re-trigger via workflow_dispatch with the tag.
+    needs: build
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ inputs.tag || github.ref_name }}
+    steps:
+      - name: Un-draft the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "All assets uploaded for $TAG; publishing the release."
+          gh release edit "$TAG" --draft=false --repo "${{ github.repository }}"

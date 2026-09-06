@@ -1,0 +1,11 @@
+{
+  "version": "1.0.0",
+  "runs": [
+    {
+      "tool": { "name": "old-tool" },
+      "results": [
+        { "ruleId": "R1", "message": "SARIF 1.0 put the message here, as a bare string." }
+      ]
+    }
+  ]
+}
