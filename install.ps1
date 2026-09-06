@@ -55,9 +55,21 @@ if ($Version -eq 'latest') {
     Write-Step "Resolving the latest release of $Repo..."
     $headers = @{ 'User-Agent' = 'udc-install' }
     if ($env:GITHUB_TOKEN) { $headers['Authorization'] = "Bearer $env:GITHUB_TOKEN" }
-    $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $headers
-    $tag = $release.tag_name
-    if (-not $tag) { throw "Could not resolve the latest release of $Repo." }
+    try {
+        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/$Repo/releases/latest" -Headers $headers
+        $tag = $release.tag_name
+    } catch {
+        # Tell a missing release from a rate limit: they need opposite fixes.
+        $status = $null
+        try { $status = [int]$_.Exception.Response.StatusCode } catch { }
+        switch ($status) {
+            404 { throw "$Repo has no published release yet. A release under construction stays a draft until every platform binary is uploaded, and drafts are not 'latest'. Install a specific tag with -Version <tag>." }
+            403 { throw "GitHub rejected the request (HTTP 403), almost always the unauthenticated API rate limit. Set `$env:GITHUB_TOKEN, or skip the lookup with -Version <tag>." }
+            429 { throw "GitHub rate-limited the request (HTTP 429). Set `$env:GITHUB_TOKEN, or skip the lookup with -Version <tag>." }
+            default { throw "Could not resolve the latest release of ${Repo}: $($_.Exception.Message). Install a specific tag with -Version <tag>." }
+        }
+    }
+    if (-not $tag) { throw "The GitHub API returned no tag_name for $Repo." }
 } else {
     $tag = $Version
 }

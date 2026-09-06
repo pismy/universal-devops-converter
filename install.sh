@@ -88,37 +88,99 @@ fi
 # --- download helpers -------------------------------------------------------
 
 if command -v curl >/dev/null 2>&1; then
-  fetch() {
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-      curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" "$1" -o "$2"
-    else
-      curl -fsSL "$1" -o "$2"
-    fi
-  }
-  fetch_stdout() {
-    if [ -n "${GITHUB_TOKEN:-}" ]; then
-      curl -fsSL -H "Authorization: Bearer ${GITHUB_TOKEN}" "$1"
-    else
-      curl -fsSL "$1"
-    fi
-  }
+  DOWNLOADER=curl
 elif command -v wget >/dev/null 2>&1; then
-  fetch() { wget -qO "$2" "$1"; }
-  fetch_stdout() { wget -qO- "$1"; }
+  DOWNLOADER=wget
 else
   die "neither curl nor wget is available"
 fi
 
+# Download $1 into $2 and print the HTTP status.
+#
+# The status is the point: a bare "it failed" cannot tell a missing release from
+# a rate limit, and those two need opposite fixes. `wget` cannot report one, so
+# it gets 200/000.
+http_get() {
+  case "$DOWNLOADER" in
+    curl)
+      if [ -n "${GITHUB_TOKEN:-}" ]; then
+        curl -sL -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+          -o "$2" -w '%{http_code}' "$1" 2>/dev/null || printf '000'
+      else
+        curl -sL -o "$2" -w '%{http_code}' "$1" 2>/dev/null || printf '000'
+      fi
+      ;;
+    wget)
+      if wget -qO "$2" "$1" 2>/dev/null; then printf '200'; else printf '000'; fi
+      ;;
+  esac
+}
+
+# Scratch space. Created before anything is fetched, because resolving the
+# release already needs somewhere to put a response body.
+TMP="$(mktemp -d)"
+# shellcheck disable=SC2064 # expand $TMP now: it must be removed even if unset later
+trap "rm -rf '$TMP'" EXIT INT TERM
+
 # --- resolve the release ----------------------------------------------------
+
+# `https://github.com/<repo>/releases/latest` redirects to the tag page of the
+# latest non-draft, non-prerelease release. Reading the tag out of that redirect
+# costs no API call, which matters: the unauthenticated API allows 60 requests
+# per hour per IP, and a busy CI runner burns through that shared budget.
+latest_from_redirect() {
+  [ "$DOWNLOADER" = curl ] || return 0
+  resolved="$(curl -sIL -o /dev/null -w '%{url_effective}' \
+    "https://github.com/${REPO}/releases/latest" 2>/dev/null || true)"
+  case "$resolved" in
+    */releases/tag/*) printf '%s' "${resolved##*/releases/tag/}" ;;
+    *) : ;;  # no release yet: GitHub keeps you on the releases index
+  esac
+}
+
+resolve_latest() {
+  tag="$(latest_from_redirect)"
+  if [ -n "$tag" ]; then
+    printf '%s' "$tag"
+    return 0
+  fi
+
+  # Fall back to the API, and report what it actually said.
+  status="$(http_get "https://api.github.com/repos/${REPO}/releases/latest" "${TMP}/latest.json")"
+  case "$status" in
+    200)
+      # `sed` rather than a JSON parser: `jq` is not something a minimal CI
+      # image can be assumed to have.
+      tag="$(sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
+        "${TMP}/latest.json" | head -n 1)"
+      [ -n "$tag" ] || die "the GitHub API returned no tag_name for ${REPO}"
+      printf '%s' "$tag"
+      ;;
+    404)
+      die "${REPO} has no published release yet.
+       If a release is being built right now, it stays a draft until every
+       platform binary is uploaded, and drafts are not 'latest'.
+       Install a specific tag with: --version <tag>"
+      ;;
+    403 | 429)
+      die "GitHub rejected the request while resolving 'latest' (HTTP ${status}).
+       This is almost always the unauthenticated API rate limit.
+       Set GITHUB_TOKEN, or skip the lookup with: --version <tag>"
+      ;;
+    000)
+      die "could not reach GitHub to resolve the latest release of ${REPO}.
+       Check network access, or install a specific tag with: --version <tag>"
+      ;;
+    *)
+      die "could not resolve the latest release of ${REPO} (HTTP ${status}).
+       Install a specific tag with: --version <tag>"
+      ;;
+  esac
+}
 
 if [ "$VERSION" = latest ]; then
   log "Resolving the latest release of ${REPO}…"
-  # `sed` over the release API rather than a JSON parser: `jq` is not something
-  # a minimal CI image can be assumed to have.
-  TAG="$(fetch_stdout "https://api.github.com/repos/${REPO}/releases/latest" \
-    | sed -n 's/.*"tag_name"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' \
-    | head -n 1)"
-  [ -n "$TAG" ] || die "could not resolve the latest release of ${REPO}"
+  TAG="$(resolve_latest)"
 else
   TAG="$VERSION"
 fi
@@ -140,15 +202,20 @@ mkdir -p "$INSTALL_DIR" || die "cannot create '$INSTALL_DIR'"
 
 # --- download, verify, unpack ----------------------------------------------
 
-TMP="$(mktemp -d)"
-# shellcheck disable=SC2064 # expand $TMP now: it must be removed even if unset later
-trap "rm -rf '$TMP'" EXIT INT TERM
-
 log "Downloading ${BASE_URL}/${ARCHIVE}"
-fetch "${BASE_URL}/${ARCHIVE}" "${TMP}/${ARCHIVE}" || die "download failed"
+status="$(http_get "${BASE_URL}/${ARCHIVE}" "${TMP}/${ARCHIVE}")"
+case "$status" in
+  200) ;;
+  404)
+    die "no ${ARCHIVE} in release ${TAG} of ${REPO}.
+       Either that release predates this platform, or the tag does not exist.
+       See https://github.com/${REPO}/releases"
+    ;;
+  *) die "downloading ${ARCHIVE} failed (HTTP ${status})" ;;
+esac
 
 if [ "$VERIFY" -eq 1 ]; then
-  if fetch "${BASE_URL}/${ARCHIVE}.sha256" "${TMP}/${ARCHIVE}.sha256" 2>/dev/null; then
+  if [ "$(http_get "${BASE_URL}/${ARCHIVE}.sha256" "${TMP}/${ARCHIVE}.sha256")" = 200 ]; then
     expected="$(cut -d' ' -f1 < "${TMP}/${ARCHIVE}.sha256")"
     if command -v sha256sum >/dev/null 2>&1; then
       actual="$(sha256sum "${TMP}/${ARCHIVE}" | cut -d' ' -f1)"

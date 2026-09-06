@@ -71,7 +71,9 @@ curl -fsSL .../install.sh | sh -s -- --version v1.2.3 --install-dir ~/.local/bin
 | `--install-dir <DIR>` | `UDC_INSTALL_DIR`    | `/usr/local/bin` if writable, else `~/.local/bin` |
 | `--no-verify`         | —                    | checksum is verified                              |
 
-Set `GITHUB_TOKEN` in CI to avoid the unauthenticated GitHub API rate limit.
+Resolving `latest` reads GitHub's redirect rather than its API, so it does not
+spend the unauthenticated rate limit. `GITHUB_TOKEN` is only consulted if that
+lookup has to fall back to the API — which the PowerShell script always does.
 
 Archives are attached to every
 [release](https://github.com/pismy/universal-devops-converter/releases). From
@@ -270,9 +272,11 @@ Three things worth knowing about this pattern:
   conversion leaves you with no report rather than a red job, so keep an eye on
   the job log — or move both back into `script` when you would rather they be
   blocking.
-- **Pin the version.** It keeps the job reproducible and avoids the
-  unauthenticated GitHub API rate limit that resolving `latest` goes through.
-  Either using the `--version` option, or the `UDC_VERSION` environment variable.
+- **Pin the version.** It keeps the job reproducible: `latest` moves under you,
+  and a pipeline that changes behaviour because a release happened is a pipeline
+  you cannot bisect. Either the `--version` option or the `UDC_VERSION`
+  environment variable. It also skips the release lookup entirely, which is one
+  fewer network call that can fail.
 
 ### GitHub Actions
 
