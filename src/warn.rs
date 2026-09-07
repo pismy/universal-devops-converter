@@ -104,6 +104,7 @@ impl Warnings {
 #[derive(Debug, Default)]
 pub struct FormatCtx {
     version: Option<&'static str>,
+    version_requested: bool,
     path_rewriting: bool,
     warnings: Warnings,
 }
@@ -114,9 +115,25 @@ impl FormatCtx {
     pub fn new(version: Option<&'static str>) -> Self {
         FormatCtx {
             version,
+            version_requested: false,
             path_rewriting: false,
             warnings: Warnings::new(),
         }
+    }
+
+    /// Record that the version came from the command line rather than from the
+    /// format's default.
+    ///
+    /// Writers need the difference: converting a document to its own format
+    /// must keep the version it came in as, unless the user asked for another
+    /// one. Without this the default would silently downgrade every round trip.
+    pub fn set_version_requested(&mut self, requested: bool) {
+        self.version_requested = requested;
+    }
+
+    /// Whether [`FormatCtx::version`] was asked for explicitly.
+    pub fn version_requested(&self) -> bool {
+        self.version_requested
     }
 
     /// Tell the context that the run rewrites paths (`--source-root` or

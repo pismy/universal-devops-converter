@@ -5,5 +5,6 @@
 
 pub mod coverage;
 pub mod quality;
+pub mod sbom;
 pub mod security;
 pub mod tests;

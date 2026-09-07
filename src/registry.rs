@@ -10,6 +10,7 @@ use crate::error::{Error, Result};
 use crate::formats;
 use crate::model::coverage::CoverageDoc;
 use crate::model::findings::FindingsDoc;
+use crate::model::sbom::SbomDoc;
 use crate::model::tests::TestReport;
 use crate::paths::PathMapper;
 use crate::warn::{FormatCtx, NoteKind};
@@ -72,6 +73,9 @@ pub enum Doc {
     Coverage(CoverageDoc),
     Tests(TestReport),
     Findings(FindingsDoc),
+    /// Boxed: an `SbomDoc` is several times the size of the other pivots, and
+    /// an unboxed variant would make every `Doc` that large.
+    Sbom(Box<SbomDoc>),
 }
 
 impl Doc {
@@ -96,12 +100,20 @@ impl Doc {
         }
     }
 
+    pub fn as_sbom(&self) -> Result<&SbomDoc> {
+        match self {
+            Doc::Sbom(doc) => Ok(doc),
+            _ => Err(Error::config("expected a bill of materials")),
+        }
+    }
+
     /// Fold a second input into this one (repeatable `--input-file`).
     pub fn merge(&mut self, other: Doc) -> Result<()> {
         match (self, other) {
             (Doc::Coverage(a), Doc::Coverage(b)) => a.merge(b),
             (Doc::Tests(a), Doc::Tests(b)) => a.merge(b),
             (Doc::Findings(a), Doc::Findings(b)) => a.merge(b),
+            (Doc::Sbom(a), Doc::Sbom(b)) => a.merge(*b),
             _ => {
                 return Err(Error::config(
                     "cannot merge inputs of different report categories",
@@ -116,6 +128,7 @@ impl Doc {
             Doc::Coverage(doc) => doc.normalize_paths(mapper),
             Doc::Tests(doc) => doc.normalize_paths(mapper),
             Doc::Findings(doc) => doc.normalize_paths(mapper),
+            Doc::Sbom(doc) => doc.normalize_paths(mapper),
         }
     }
 
@@ -125,6 +138,7 @@ impl Doc {
         match self {
             Doc::Coverage(doc) => doc.sort(),
             Doc::Findings(doc) => doc.sort(),
+            Doc::Sbom(doc) => doc.sort(),
             // Test suites keep their execution order on purpose.
             Doc::Tests(_) => {}
         }
@@ -532,6 +546,36 @@ pub static FORMATS: &[FormatSpec] = &[
         read: None,
         write: Some(formats::security::gitlab::write_sast),
     },
+    // ---- SBOM ---------------------------------------------------------------
+    FormatSpec {
+        id: "cyclonedx-json",
+        aliases: &["cdx-json", "cyclonedx"],
+        categories: &[Category::Sbom],
+        description: "CycloneDX JSON bill of materials",
+        write_notes: &[
+            (
+                NoteKind::Degraded,
+                "a component type the target spec version does not define is written as \
+                 `library`; emitting it would make the whole document invalid",
+            ),
+            (
+                NoteKind::Lossy,
+                "vulnerabilities, services and compositions are not part of the bill-of-materials \
+                 pivot",
+            ),
+        ],
+        // Only the versions whose schema is vendored: the project's rule is that
+        // everything it writes is validated in the tests, and offering a version
+        // it cannot check would quietly break that. (1.0 and 1.1 have no JSON
+        // serialization at all; 1.2 and 1.3 are long superseded.)
+        versions: &["1.4", "1.5", "1.6"],
+        // Deliberately not the newest: 1.5 is what the widest set of consumers
+        // ingests today, and a BOM converted to its own format keeps its own
+        // version anyway.
+        default_version: Some("1.5"),
+        read: Some(formats::sbom::cyclonedx_json::read),
+        write: Some(formats::sbom::cyclonedx_json::write),
+    },
 ];
 
 /// A format plus the spec version to use with it, as named on the command line.
@@ -541,12 +585,16 @@ pub struct Selection {
     /// The version to target: the one requested, else the format's default,
     /// else `None` for an unversioned format.
     pub version: Option<&'static str>,
+    /// True when `version` came from the selector rather than the default.
+    pub explicit_version: bool,
 }
 
 impl Selection {
     /// A context for a reader or writer to work in.
     pub fn ctx(&self) -> crate::warn::FormatCtx {
-        crate::warn::FormatCtx::new(self.version)
+        let mut ctx = crate::warn::FormatCtx::new(self.version);
+        ctx.set_version_requested(self.explicit_version);
+        ctx
     }
 }
 
@@ -585,6 +633,7 @@ pub fn resolve(selector: &str) -> Result<Selection> {
         return Ok(Selection {
             spec,
             version: spec.default_version,
+            explicit_version: false,
         });
     };
 
@@ -615,6 +664,7 @@ pub fn resolve(selector: &str) -> Result<Selection> {
     Ok(Selection {
         spec,
         version: Some(version),
+        explicit_version: true,
     })
 }
 
@@ -673,6 +723,14 @@ mod tests {
         let selection = resolve("sarif@2.1.0").unwrap();
         assert_eq!(selection.spec.id, "sarif");
         assert_eq!(selection.version, Some("2.1.0"));
+        assert!(selection.explicit_version);
+    }
+
+    #[test]
+    fn a_default_version_is_not_an_explicit_one() {
+        // A writer converting a document to its own format keeps the incoming
+        // version unless the user asked otherwise, so the difference matters.
+        assert!(!resolve("sarif").unwrap().explicit_version);
     }
 
     #[test]

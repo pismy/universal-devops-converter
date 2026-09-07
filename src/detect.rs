@@ -145,11 +145,8 @@ fn sniff_json(text: &str) -> Outcome {
         return None;
     }
 
-    if has(r#""bomFormat""#) || has(r#""specVersion""#) && has(r#""components""#) {
-        return Some(Err(Planned {
-            name: "CycloneDX JSON",
-            category: "sbom",
-        }));
+    if has(r#""bomFormat""#) {
+        return Some(Ok("cyclonedx-json"));
     }
     if has(r#""spdxVersion""#) || has(r#""SPDXID""#) {
         return Some(Err(Planned {
@@ -349,6 +346,14 @@ mod tests {
     }
 
     #[test]
+    fn identifies_a_cyclonedx_document() {
+        assert_eq!(
+            id_of(r#"{"bomFormat":"CycloneDX","specVersion":"1.6","components":[]}"#),
+            "cyclonedx-json"
+        );
+    }
+
+    #[test]
     fn identifies_a_trivy_report() {
         assert_eq!(
             id_of(r#"{"SchemaVersion":2,"ArtifactName":"x","Results":[]}"#),
@@ -358,9 +363,10 @@ mod tests {
 
     #[test]
     fn names_recognized_but_unsupported_formats() {
-        let error = detect(br#"{"bomFormat":"CycloneDX"}"#, "input").unwrap_err();
-        assert!(error.to_string().contains("CycloneDX"));
-        assert!(error.to_string().contains("not supported yet"));
+        // CycloneDX used to be the example here; SPDX is what is still planned.
+        let error = detect(br#"{"spdxVersion":"SPDX-2.3","name":"acme"}"#, "input").unwrap_err();
+        assert!(error.to_string().contains("SPDX"), "{error}");
+        assert!(error.to_string().contains("not supported yet"), "{error}");
     }
 
     #[test]

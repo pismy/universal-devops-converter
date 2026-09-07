@@ -146,6 +146,9 @@ eslint -f checkstyle . | udc -f checkstyle -t sarif -o results.sarif
 # any SAST tool → GitLab's security dashboard
 semgrep --sarif | udc -f sarif -t gitlab-sast -o gl-sast-report.json
 
+# downgrade a bill of materials for a consumer stuck on an older schema
+udc -i sbom.json -t cyclonedx-json@1.4 -o sbom-1.4.json
+
 # Trivy covers dependencies, images, IaC and secrets in one report — and one
 # image scan yields two GitLab reports, each holding the half it can express
 trivy image --format json acme/api:1.2.3 > trivy.json
@@ -252,6 +255,7 @@ Today:
 | **Tests**    | JUnit XML, TRX, `go test -json`, TAP | JUnit XML                      |
 | **Quality**  | Checkstyle, ESLint, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF, Trivy                    | SARIF, GitLab SAST / dependency / container |
+| **SBOM**     | CycloneDX JSON                  | CycloneDX JSON (1.4 / 1.5 / 1.6)           |
 
 Any readable format converts to any writable format **sharing a category**.
 Converting a Checkstyle report into Cobertura is an error, not a best-effort

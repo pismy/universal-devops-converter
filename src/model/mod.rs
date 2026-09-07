@@ -6,4 +6,5 @@
 
 pub mod coverage;
 pub mod findings;
+pub mod sbom;
 pub mod tests;

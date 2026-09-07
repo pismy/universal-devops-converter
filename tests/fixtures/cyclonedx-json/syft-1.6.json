@@ -1,0 +1,63 @@
+{
+  "$schema": "http://cyclonedx.org/schema/bom-1.6.schema.json",
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.6",
+  "serialNumber": "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-06-26T12:00:00Z",
+    "tools": {
+      "components": [
+        { "type": "application", "name": "syft", "version": "1.4.1", "author": "anchore" }
+      ]
+    },
+    "component": {
+      "bom-ref": "acme-api",
+      "type": "application",
+      "name": "acme/api",
+      "version": "1.2.3"
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:npm/lodash@4.17.21",
+      "type": "library",
+      "name": "lodash",
+      "version": "4.17.21",
+      "purl": "pkg:npm/lodash@4.17.21",
+      "description": "Lodash modular utilities.",
+      "scope": "required",
+      "supplier": { "name": "OpenJS Foundation" },
+      "licenses": [{ "license": { "id": "MIT" } }],
+      "hashes": [
+        { "alg": "SHA-256", "content": "0d2c1e6d0b1a1c9f4d5e6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3c4d5e6f70819" }
+      ],
+      "externalReferences": [
+        { "type": "website", "url": "https://lodash.com" }
+      ]
+    },
+    {
+      "bom-ref": "pkg:deb/debian/libssl3@3.0.11-1",
+      "type": "library",
+      "name": "libssl3",
+      "version": "3.0.11-1",
+      "group": "debian",
+      "purl": "pkg:deb/debian/libssl3@3.0.11-1",
+      "cpe": "cpe:2.3:a:openssl:openssl:3.0.11:*:*:*:*:*:*:*",
+      "licenses": [{ "expression": "Apache-2.0 OR MIT" }]
+    },
+    {
+      "bom-ref": "tls-keypair",
+      "type": "cryptographic-asset",
+      "name": "server-tls-keypair",
+      "version": "1"
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "acme-api",
+      "dependsOn": ["pkg:npm/lodash@4.17.21", "pkg:deb/debian/libssl3@3.0.11-1"]
+    },
+    { "ref": "pkg:npm/lodash@4.17.21", "dependsOn": [] }
+  ]
+}

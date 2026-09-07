@@ -1,0 +1,26 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.4",
+  "version": 1,
+  "metadata": {
+    "component": { "type": "application", "name": "monorepo", "version": "0.1.0" }
+  },
+  "components": [
+    {
+      "bom-ref": "root-lib",
+      "type": "library",
+      "name": "root-lib",
+      "version": "2.0.0",
+      "licenses": [{ "license": { "name": "A licence with no SPDX id" } }],
+      "components": [
+        {
+          "bom-ref": "vendored-dep",
+          "type": "library",
+          "name": "vendored-dep",
+          "version": "0.9.0",
+          "purl": "pkg:cargo/vendored-dep@0.9.0"
+        }
+      ]
+    }
+  ]
+}

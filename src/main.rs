@@ -79,6 +79,7 @@ fn convert(args: &ConvertArgs, style: Style) -> Result<()> {
                 Selection {
                     spec,
                     version: spec.default_version,
+                    explicit_version: false,
                 }
             }
         };

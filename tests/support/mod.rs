@@ -124,6 +124,10 @@ pub enum Schema {
     Xsd(&'static str),
     /// Document Type Definition, validated with `xmllint --dtdvalid`.
     Dtd(&'static str),
+    /// One JSON Schema per spec version, selected from the document's own
+    /// `specVersion`. The prefix names the file family,
+    /// e.g. `cyclonedx` for `cyclonedx-1.6.schema.json`.
+    JsonPerVersion(&'static str),
     /// No schema exists for this format; the reason is worth stating.
     None(&'static str),
 }
@@ -143,6 +147,9 @@ pub fn schema_for(format_id: &str) -> Schema {
         "istanbul" => Schema::Json("istanbul.schema.json"),
         "eslint" => Schema::Json("eslint.schema.json"),
         "sarif" => Schema::Json("sarif-2.1.0.json"),
+        // CycloneDX ships one schema per spec version, and a document says
+        // which it claims; validating against the wrong one proves nothing.
+        "cyclonedx-json" => Schema::JsonPerVersion("cyclonedx"),
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
         "gitlab-sast" => Schema::Json("gitlab-sast-15.2.5.json"),
@@ -172,11 +179,30 @@ pub fn validate(format_id: &str, bytes: &[u8], origin: &str) -> Result<(), Strin
     match schema_for(format_id) {
         Schema::None(_) => Ok(()),
         Schema::Json(file) => validate_json(&schemas_dir().join(file), bytes, origin),
+        Schema::JsonPerVersion(family) => {
+            let version = spec_version(bytes).ok_or_else(|| {
+                format!("{origin} declares no `specVersion`, so no schema could be chosen")
+            })?;
+            let file = format!("{family}-{version}.schema.json");
+            let path = schemas_dir().join(&file);
+            if !path.exists() {
+                return Err(format!(
+                    "{origin} declares specVersion {version}, but {file} is not vendored"
+                ));
+            }
+            validate_json(&path, bytes, origin)
+        }
         Schema::Xsd(file) => validate_xml(&["--schema"], &schemas_dir().join(file), bytes, origin),
         Schema::Dtd(file) => {
             validate_xml(&["--dtdvalid"], &schemas_dir().join(file), bytes, origin)
         }
     }
+}
+
+/// The `specVersion` a JSON document claims, used to pick its schema.
+fn spec_version(bytes: &[u8]) -> Option<String> {
+    let value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
+    value.get("specVersion")?.as_str().map(str::to_string)
 }
 
 fn validate_json(schema_path: &Path, bytes: &[u8], origin: &str) -> Result<(), String> {

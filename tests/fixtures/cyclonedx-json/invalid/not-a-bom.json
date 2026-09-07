@@ -1,0 +1,4 @@
+{
+  "specVersion": "1.6",
+  "components": [{ "type": "library", "name": "looks close but has no bomFormat" }]
+}

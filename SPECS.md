@@ -152,8 +152,10 @@ Three rules follow:
    field. Hence `FormatSpec::default_version`, explicitly distinct from "the last one in the
    list".
 2. **Converting to the same format ⇒ keep the input's version**, so as not to downgrade silently.
-   *To be implemented with the first genuinely versioned format*: it requires the reader to carry
-   the document's version into the pivot.
+   Implemented with CycloneDX, the first genuinely versioned format: `SbomDoc` carries the source
+   `specVersion`, and `FormatCtx::version_requested` tells a writer whether the version it was
+   handed came from the command line or from the format's default. Without that distinction the
+   default would rewrite every round trip.
 3. **A downgrade creates a distinct class of loss.** Dropping a field is one thing (`lossy`);
    rewriting a value to stay valid — remapping an enum member the target version does not know,
    approximating a counter — is another (`degraded`). Emitting the unknown value as-is is not an
@@ -427,7 +429,7 @@ Three constraints in those schemas shape the writers:
 
 | Format | Read | Write | Notes |
 |---|---|---|---|
-| CycloneDX JSON | 🔜 | 🔜 | 1.4 → 1.6 |
+| CycloneDX JSON | ✅ | ✅ | 1.4, 1.5, 1.6 — only the versions whose schema is vendored, so everything written is validated |
 | CycloneDX XML | 🔜 | 🔜 | |
 | SPDX JSON | 🔜 | 🔜 | 2.2 / 2.3 |
 | SPDX tag-value | 💭 | 💭 | |
@@ -435,8 +437,22 @@ Three constraints in those schemas shape the writers:
 | Syft JSON | 💭 | — | |
 | SWID | 💭 | — | |
 
-This is the **trickiest** category (component identity, `purl`, licenses, relationship graph).
-To be tackled last, once the loss-reporting mechanism has matured.
+This is the **trickiest** category (component identity, `purl`, licenses, relationship graph),
+and the only one where a maintained reference tool already exists: `cyclonedx-cli convert` does
+CycloneDX ↔ SPDX and version changes. What this tool adds is one binary instead of two, and the
+same loss reporting as every other category.
+
+Design notes that were open questions before CycloneDX landed:
+
+- **The identity backbone is `purl`.** It is the one identifier both formats carry, that survives
+  a conversion in either direction, and that two scanners agree on. Merging matches on it.
+- **No passthrough.** An earlier sketch had the pivot keep unmapped fields verbatim so that a
+  same-format downgrade could reinject them. It was dropped: it would put a JSON-shaped escape
+  hatch into a serialization-agnostic model, and CycloneDX XML would need a second one. Fields
+  outside the pivot are reported as lost, like everywhere else.
+- **Enum narrowing is mandatory, not optional.** `component.type` gained members in 1.5 and 1.6.
+  Writing one into an older document does not degrade that component, it invalidates the whole
+  file — so an unknown kind becomes `library` and the narrowing is reported.
 
 ### 5.6 Accessibility — `A11yDoc` pivot
 
