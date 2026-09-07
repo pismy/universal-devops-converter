@@ -185,6 +185,25 @@ fn sniff_json(text: &str) -> Outcome {
     None
 }
 
+/// `1..12` — a TAP plan, and nothing else looks like it.
+fn is_tap_plan(line: &str) -> bool {
+    match line
+        .split('#')
+        .next()
+        .unwrap_or(line)
+        .trim()
+        .split_once("..")
+    {
+        Some((start, end)) => {
+            !start.is_empty()
+                && !end.is_empty()
+                && start.chars().all(|c| c.is_ascii_digit())
+                && end.chars().all(|c| c.is_ascii_digit())
+        }
+        None => false,
+    }
+}
+
 fn sniff_lines(text: &str) -> Outcome {
     for line in text.lines().take(50) {
         let line = line.trim();
@@ -199,6 +218,14 @@ fn sniff_lines(text: &str) -> Outcome {
         }
         if line.starts_with("mode: ") {
             return Some(Ok("go-coverprofile"));
+        }
+        // TAP: a version line, a plan, or an assertion — whichever comes first.
+        if line.starts_with("TAP version")
+            || line.starts_with("ok ")
+            || line.starts_with("not ok ")
+            || is_tap_plan(line)
+        {
+            return Some(Ok("tap"));
         }
     }
     None
@@ -263,6 +290,13 @@ mod tests {
     #[test]
     fn strips_namespace_prefixes() {
         assert_eq!(id_of("<ns:testsuites xmlns:ns=\"x\"/>"), "junit");
+    }
+
+    #[test]
+    fn identifies_tap_by_its_version_plan_or_assertions() {
+        assert_eq!(id_of("TAP version 13\n1..1\nok 1 - fine\n"), "tap");
+        assert_eq!(id_of("1..2\nok 1\nnot ok 2\n"), "tap");
+        assert_eq!(id_of("ok 1 - no header at all\n"), "tap");
     }
 
     #[test]

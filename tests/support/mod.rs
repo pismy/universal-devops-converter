@@ -146,7 +146,7 @@ pub fn schema_for(format_id: &str) -> Schema {
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
         "gitlab-sast" => Schema::Json("gitlab-sast-15.2.5.json"),
-        "go-coverprofile" | "lcov" => {
+        "go-coverprofile" | "lcov" | "tap" => {
             Schema::None("a line-oriented text format with no formal grammar")
         }
         "go-test-json" => Schema::None(

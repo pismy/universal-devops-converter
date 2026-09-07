@@ -1,0 +1,15 @@
+TAP version 14
+# Subtest: calculator
+    ok 1 - adds
+    not ok 2 - divides
+      ---
+      message: 'expected 2, got 3'
+      ...
+    1..2
+not ok 1 - calculator
+# Subtest: parser
+    ok 1 - parses an empty document
+    1..1
+ok 2 - parser
+ok 3 - standalone assertion
+1..3

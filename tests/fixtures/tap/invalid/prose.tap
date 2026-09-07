@@ -1,0 +1,2 @@
+This file is prose, not a test protocol.
+It mentions ok and not ok but never as assertions.

@@ -1,0 +1,13 @@
+TAP version 13
+1..4
+ok 1 - adds numbers
+not ok 2 - divides numbers
+  ---
+  message: 'expected 2, got 3'
+  severity: fail
+  at:
+    file: calc_test.js
+    line: 23
+  ...
+ok 3 - later # SKIP needs network
+not ok 4 - streams # TODO not implemented yet

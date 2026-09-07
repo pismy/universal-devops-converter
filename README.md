@@ -146,6 +146,9 @@ eslint -f checkstyle . | udc -f checkstyle -t sarif -o results.sarif
 # any SAST tool → GitLab's security dashboard
 semgrep --sarif | udc -f sarif -t gitlab-sast -o gl-sast-report.json
 
+# TAP, from node-tap, prove, or anything else that speaks it
+tap --reporter=tap | udc -f tap -t junit -o junit.xml
+
 # Go's test runner speaks NDJSON; a build failure becomes a failing case, not silence
 go test -json ./... | udc -t junit -o junit.xml
 
@@ -240,7 +243,7 @@ Today:
 | Category     | Read                            | Write                               |
 | ------------ | ------------------------------- | ----------------------------------- |
 | **Coverage** | LCOV, Clover, Cobertura, Go, Istanbul, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
-| **Tests**    | JUnit XML, TRX, `go test -json` | JUnit XML                           |
+| **Tests**    | JUnit XML, TRX, `go test -json`, TAP | JUnit XML                      |
 | **Quality**  | Checkstyle, ESLint, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF                           | SARIF, GitLab SAST                         |
 

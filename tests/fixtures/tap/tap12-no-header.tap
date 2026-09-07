@@ -1,0 +1,4 @@
+ok 1 - the protocol predates the version line
+not ok 2 - and has no yaml blocks either
+ok 3 # SKIP
+1..3

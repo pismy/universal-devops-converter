@@ -338,6 +338,19 @@ pub static FORMATS: &[FormatSpec] = &[
         write: None,
     },
     FormatSpec {
+        id: "tap",
+        aliases: &["tap13", "tap14"],
+        categories: &[Category::Tests],
+        description: "TAP — Test Anything Protocol 12/13/14",
+        write_notes: &[],
+        versions: &[],
+        default_version: None,
+        read: Some(formats::tests::tap::read),
+        // Read-only: TAP's consumers are test harnesses and a few CI plugins,
+        // all of which read JUnit too.
+        write: None,
+    },
+    FormatSpec {
         id: "trx",
         aliases: &["mstest", "vstest"],
         categories: &[Category::Tests],
