@@ -127,6 +127,9 @@ eslint -f checkstyle . | udc -f checkstyle -t codeclimate-gitlab -o gl-code-qual
 # SARIF (semgrep, CodeQL, gosec…) → GitLab Code Quality
 semgrep --sarif | udc -f sarif -t codeclimate-gitlab -o gl-code-quality.json
 
+# the mirror image: any linter → SARIF, for GitHub code scanning
+eslint -f checkstyle . | udc -f checkstyle -t sarif -o results.sarif
+
 # Merge sharded test runs into a single JUnit report
 udc -i results/shard1.xml -i results/shard2.xml -t junit -o junit.xml
 
@@ -217,7 +220,7 @@ Today:
 | ------------ | ------------------------------- | ----------------------------------- |
 | **Coverage** | LCOV, Cobertura, JaCoCo         | LCOV, Cobertura, JaCoCo             |
 | **Tests**    | JUnit XML                       | JUnit XML                           |
-| **Quality**  | Checkstyle, SARIF, Code Climate | Code Climate, Code Climate (GitLab) |
+| **Quality**  | Checkstyle, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 
 Any readable format converts to any writable format **of the same category**.
 Converting a Checkstyle report into Cobertura is an error, not a best-effort

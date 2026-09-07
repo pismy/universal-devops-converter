@@ -306,17 +306,31 @@ Primary sink: **Code Climate JSON**, in its GitLab flavour
 
 | Format | Read | Write | Notes |
 |---|---|---|---|
-| Checkstyle XML | ✅ | 🔜 | ESLint, PHP_CodeSniffer, golangci-lint, ktlint, stylelint… |
+| Checkstyle XML | ✅ | 💭 | ESLint, PHP_CodeSniffer, golangci-lint, ktlint, stylelint… — a *producer* format: nothing consumes it that does not also read something better |
 | Code Climate | ✅ | ✅ | full specification |
 | Code Climate (GitLab) | ✅ | ✅ | subset; `fingerprint` is mandatory |
-| SARIF 2.1.0 | ✅ | 🔜 | semgrep, CodeQL, gosec, bandit, Checkov… |
+| SARIF 2.1.0 | ✅ | ✅ | semgrep, CodeQL, gosec, bandit, Checkov…; writing it is what reaches GitHub code scanning |
 | ESLint JSON | 🔜 | — | |
 | PMD XML | 💭 | — | |
 | SpotBugs XML | 💭 | — | |
 | SonarQube Generic Issue | 💭 | 💭 | |
 | Codacy | 💭 | — | |
 
-**Highest-ROI conversions: Checkstyle → Code Climate (GitLab)** and **SARIF → Code Climate**.
+**Highest-ROI conversions: Checkstyle → Code Climate (GitLab)** for GitLab, and
+**Checkstyle → SARIF** for GitHub code scanning — the same need on the other platform.
+
+> **Note on SARIF.** SARIF belongs to this category *and* to §5.4, but the registry
+> allows one entry per id. The writer lives in `quality` for now; the security
+> profile will force the `security:sarif` / `quality:sarif` qualifier that `:` is
+> reserved for (§3.4).
+>
+> Rebuilding `tool.driver.rules[]` is the delicate part: the pivot carries rule
+> metadata per finding, so the table is reconstructed by deduplicating on rule id
+> and the first finding seen defines the rule. `security-severity` is emitted only
+> for findings carrying a security identifier — it is GitHub's marker for "this
+> belongs in the security tab", and putting it on a style lint would misfile it.
+> The cost is that critical and blocker collapse into `error` for everything else,
+> which is reported as `degraded:`.
 
 ### 5.4 Security — `FindingsDoc` pivot (vulnerability profile)
 
@@ -476,8 +490,9 @@ read.
 2. ✅ **Coverage** — LCOV, Cobertura, JaCoCo (the LCOV → Cobertura conversion validates the design
    end to end).
 3. 🔜 **Tests** — JUnit done (tolerant reader + writer); TRX / `go test -json` / TAP remain.
-4. 🔜 **Quality** — Checkstyle (read), SARIF (read) and Code Climate (read + write, GitLab flavour
-   included) are done; the Checkstyle and SARIF *writers* remain, then ESLint JSON.
+4. ✅ **Quality** — Checkstyle (read), SARIF (read + write) and Code Climate (read + write,
+   GitLab flavour included). A Checkstyle *writer* is deliberately not planned: nothing consumes
+   Checkstyle that does not also read a better format. ESLint JSON next, if asked for.
 5. **Security** — SARIF → GitLab Security Report, then Trivy / Grype / OSV.
 6. **SBOM** — CycloneDX ↔ SPDX.
 7. **Accessibility, performance** — on demand.

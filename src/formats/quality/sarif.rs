@@ -7,10 +7,17 @@
 //! `runs[].results[]` with their rule metadata and first physical location.
 //! Code flows, related locations, taxonomies and fixes have no counterpart in
 //! any target format yet and are reported as losses.
+//!
+//! Writing SARIF is what lets any linter reach GitHub code scanning, the mirror
+//! of what `codeclimate-gitlab` does for GitLab. The awkward part is
+//! `tool.driver.rules[]`: the pivot stores rule metadata per *finding*, so the
+//! rule table has to be rebuilt by deduplicating on `ruleId` (see
+//! [`RuleTable`]).
 
 use std::collections::HashMap;
+use std::io::Write;
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::model::findings::{Finding, FindingsDoc, Identifier, Location, Severity, Tool};
@@ -315,12 +322,16 @@ fn build(result: RawResult, rule: Option<&RawRule>) -> Finding {
     finding
 }
 
-/// SARIF severity comes from three places, in decreasing priority: the result's
-/// own `level`, the rule's `security-severity` score, the rule's default level.
+/// SARIF severity comes from three places. `security-severity` wins, then the
+/// result's own `level`, then the rule's default level.
+///
+/// Putting the score first is deliberate: `level` has three values, the score
+/// has a hundred. A tool that emits both is saying "error, and precisely 8.6";
+/// letting `level` win would throw away the half of that statement that
+/// distinguishes a critical from a merely major finding — and would make a
+/// SARIF round trip lose severity, since writing back can only choose one of
+/// three levels.
 fn severity_of(result: &RawResult, rule: Option<&RawRule>) -> Severity {
-    if let Some(level) = result.level.as_deref().and_then(map_level) {
-        return level;
-    }
     if let Some(score) = rule
         .and_then(|r| r.properties.as_ref())
         .and_then(|p| p.security_severity.as_ref())
@@ -334,6 +345,9 @@ fn severity_of(result: &RawResult, rule: Option<&RawRule>) -> Severity {
             s if s > 0.0 => Severity::Minor,
             _ => Severity::Info,
         };
+    }
+    if let Some(level) = result.level.as_deref().and_then(map_level) {
+        return level;
     }
     rule.and_then(|r| r.default_configuration.as_ref())
         .and_then(|c| c.level.as_deref())
@@ -399,6 +413,320 @@ fn location_of(result: &RawResult) -> Location {
         begin_column: region.and_then(|r| r.start_column),
         end_column: region.and_then(|r| r.end_column),
     }
+}
+
+// ---------------------------------------------------------------------------
+// Writing
+// ---------------------------------------------------------------------------
+
+/// Canonical schema URI for SARIF 2.1.0.
+const SCHEMA_URI: &str =
+    "https://docs.oasis-open.org/sarif/sarif/v2.1.0/errata01/os/schemas/sarif-schema-2.1.0.json";
+const VERSION: &str = "2.1.0";
+
+#[derive(Debug, Serialize)]
+struct OutLog<'a> {
+    #[serde(rename = "$schema")]
+    schema: &'static str,
+    version: &'static str,
+    runs: [OutRun<'a>; 1],
+}
+
+#[derive(Debug, Serialize)]
+struct OutRun<'a> {
+    tool: OutTool<'a>,
+    results: Vec<OutResult<'a>>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutTool<'a> {
+    driver: OutDriver<'a>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutDriver<'a> {
+    name: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<&'a str>,
+    #[serde(rename = "informationUri", skip_serializing_if = "Option::is_none")]
+    information_uri: Option<&'a str>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    rules: Vec<OutRule<'a>>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutRule<'a> {
+    id: &'a str,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    name: Option<&'a str>,
+    #[serde(rename = "shortDescription")]
+    short_description: OutText<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    help: Option<OutText<'a>>,
+    #[serde(rename = "helpUri", skip_serializing_if = "Option::is_none")]
+    help_uri: Option<&'a str>,
+    #[serde(rename = "defaultConfiguration")]
+    default_configuration: OutConfiguration,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    properties: Option<OutProperties>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutConfiguration {
+    level: &'static str,
+}
+
+#[derive(Debug, Serialize)]
+struct OutProperties {
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    tags: Vec<String>,
+    #[serde(rename = "security-severity", skip_serializing_if = "Option::is_none")]
+    security_severity: Option<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutText<'a> {
+    text: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct OutResult<'a> {
+    #[serde(rename = "ruleId", skip_serializing_if = "Option::is_none")]
+    rule_id: Option<&'a str>,
+    #[serde(rename = "ruleIndex", skip_serializing_if = "Option::is_none")]
+    rule_index: Option<usize>,
+    level: &'static str,
+    message: OutText<'a>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    locations: Vec<OutLocation<'a>>,
+    #[serde(
+        rename = "partialFingerprints",
+        skip_serializing_if = "Option::is_none"
+    )]
+    partial_fingerprints: Option<HashMap<&'static str, &'a str>>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutLocation<'a> {
+    #[serde(rename = "physicalLocation")]
+    physical_location: OutPhysicalLocation<'a>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutPhysicalLocation<'a> {
+    #[serde(rename = "artifactLocation")]
+    artifact_location: OutArtifactLocation<'a>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    region: Option<OutRegion>,
+}
+
+#[derive(Debug, Serialize)]
+struct OutArtifactLocation<'a> {
+    uri: &'a str,
+}
+
+#[derive(Debug, Serialize)]
+struct OutRegion {
+    #[serde(rename = "startLine")]
+    start_line: u32,
+    #[serde(rename = "startColumn", skip_serializing_if = "Option::is_none")]
+    start_column: Option<u32>,
+    #[serde(rename = "endLine", skip_serializing_if = "Option::is_none")]
+    end_line: Option<u32>,
+    #[serde(rename = "endColumn", skip_serializing_if = "Option::is_none")]
+    end_column: Option<u32>,
+}
+
+/// Rebuilds `tool.driver.rules[]` from findings.
+///
+/// SARIF puts rule metadata in one table and has results point at it by index;
+/// the pivot carries that metadata on every finding instead. Rebuilding means
+/// deduplicating on `rule_id` — and deciding what to do when two findings claim
+/// the same rule with different metadata. First one wins, and the caller is
+/// told, because silently preferring one description over another would make
+/// the report quietly disagree with its source.
+#[derive(Default)]
+struct RuleTable<'a> {
+    order: Vec<&'a str>,
+    index: HashMap<&'a str, usize>,
+    rules: Vec<OutRule<'a>>,
+    conflicts: bool,
+}
+
+impl<'a> RuleTable<'a> {
+    fn intern(&mut self, finding: &'a Finding) -> Option<usize> {
+        let id = finding.rule_id.as_deref()?;
+        if let Some(existing) = self.index.get(id) {
+            let rule = &self.rules[*existing];
+            if rule.short_description.text != summary(finding) {
+                self.conflicts = true;
+            }
+            return Some(*existing);
+        }
+
+        let position = self.rules.len();
+        self.rules.push(OutRule {
+            id,
+            name: finding.title.as_deref(),
+            short_description: OutText {
+                text: summary(finding),
+            },
+            help: finding.help.as_deref().map(|text| OutText { text }),
+            help_uri: finding.links.first().map(String::as_str),
+            default_configuration: OutConfiguration {
+                level: level_of(finding.severity),
+            },
+            properties: properties_of(finding),
+        });
+        self.order.push(id);
+        self.index.insert(id, position);
+        Some(position)
+    }
+}
+
+/// What a rule is *about*, as opposed to what one occurrence says.
+fn summary(finding: &Finding) -> &str {
+    finding.title.as_deref().unwrap_or(&finding.description)
+}
+
+/// SARIF has three levels; the pivot has five. `note`/`warning`/`error` is the
+/// whole vocabulary, so anything above "major" collapses.
+fn level_of(severity: Severity) -> &'static str {
+    match severity {
+        Severity::Info => "note",
+        Severity::Minor => "warning",
+        Severity::Major | Severity::Critical | Severity::Blocker => "error",
+    }
+}
+
+/// The midpoint of the CVSS band the reader maps back to, so a severity
+/// survives a SARIF round trip instead of flattening into `error`.
+fn security_severity(severity: Severity) -> &'static str {
+    match severity {
+        Severity::Blocker => "9.5",
+        Severity::Critical => "8.0",
+        Severity::Major => "5.5",
+        Severity::Minor => "2.0",
+        Severity::Info => "0.0",
+    }
+}
+
+fn properties_of(finding: &Finding) -> Option<OutProperties> {
+    let mut tags: Vec<String> = finding.categories.clone();
+    tags.extend(finding.identifiers.iter().map(|i| i.value.clone()));
+
+    // `security-severity` is GitHub's marker for "this belongs in the security
+    // tab". Emitting it for a style lint would misfile it, so it is reserved
+    // for findings that actually carry a security identifier.
+    let security_severity =
+        (!finding.identifiers.is_empty()).then(|| security_severity(finding.severity).to_string());
+
+    (!tags.is_empty() || security_severity.is_some()).then_some(OutProperties {
+        tags,
+        security_severity,
+    })
+}
+
+pub fn write(doc: &Doc, out: &mut dyn Write, ctx: &mut FormatCtx) -> Result<()> {
+    let doc = doc.as_findings()?;
+
+    let mut rules = RuleTable::default();
+    let mut results = Vec::with_capacity(doc.findings.len());
+    let mut unruled = false;
+    let mut collapsed = false;
+    let mut extra_links = false;
+
+    for finding in &doc.findings {
+        let rule_index = rules.intern(finding);
+        unruled |= rule_index.is_none();
+        collapsed |= matches!(finding.severity, Severity::Critical | Severity::Blocker)
+            && finding.identifiers.is_empty();
+        extra_links |= finding.links.len() > 1;
+
+        results.push(OutResult {
+            rule_id: finding.rule_id.as_deref(),
+            rule_index,
+            level: level_of(finding.severity),
+            message: OutText {
+                text: &finding.description,
+            },
+            locations: out_locations(&finding.location),
+            partial_fingerprints: finding
+                .fingerprint
+                .as_deref()
+                .map(|fingerprint| HashMap::from([("udc/v1", fingerprint)])),
+        });
+    }
+
+    if rules.conflicts {
+        ctx.degraded(
+            "sarif: findings sharing a rule id disagreed on its metadata; the first one seen \
+             defines the rule",
+        );
+    }
+    if unruled {
+        ctx.lossy("sarif: findings with no rule id were emitted without a `ruleId`");
+    }
+    if collapsed {
+        ctx.degraded(
+            "sarif: critical and blocker collapsed to level \"error\" (SARIF has three levels); \
+             only findings carrying a security identifier keep their rank via `security-severity`",
+        );
+    }
+    if extra_links {
+        ctx.lossy("sarif: a rule has a single `helpUri`, so only the first link was kept");
+    }
+    if doc.findings.iter().any(|f| {
+        f.identifiers
+            .iter()
+            .any(|i| !i.kind.eq_ignore_ascii_case("cwe"))
+    }) {
+        ctx.lossy(
+            "sarif: identifiers other than CWE (CVE, GHSA…) survive only as rule tags, not as \
+             taxonomies",
+        );
+    }
+
+    let tool = doc.tool.as_ref();
+    let log = OutLog {
+        schema: SCHEMA_URI,
+        version: VERSION,
+        runs: [OutRun {
+            tool: OutTool {
+                driver: OutDriver {
+                    name: tool.map_or("udc", |t| t.name.as_str()),
+                    version: tool.and_then(|t| t.version.as_deref()),
+                    information_uri: tool.and_then(|t| t.url.as_deref()),
+                    rules: rules.rules,
+                },
+            },
+            results,
+        }],
+    };
+
+    serde_json::to_writer_pretty(&mut *out, &log).map_err(|e| Error::parse(FORMAT, e))?;
+    writeln!(out)?;
+    out.flush()?;
+    Ok(())
+}
+
+fn out_locations(location: &Location) -> Vec<OutLocation<'_>> {
+    if location.path.is_empty() {
+        return Vec::new();
+    }
+    vec![OutLocation {
+        physical_location: OutPhysicalLocation {
+            artifact_location: OutArtifactLocation {
+                uri: &location.path,
+            },
+            region: location.begin_line.map(|start_line| OutRegion {
+                start_line,
+                start_column: location.begin_column,
+                end_line: location.end_line,
+                end_column: location.end_column,
+            }),
+        },
+    }]
 }
 
 #[cfg(test)]
@@ -480,9 +808,9 @@ mod tests {
     }
 
     #[test]
-    fn security_severity_outranks_the_default_level() {
+    fn security_severity_outranks_every_level() {
         let (doc, _) = parse(SAMPLE);
-        // 8.1 → critical, even though defaultConfiguration says "warning".
+        // 8.6 → critical, even though defaultConfiguration says "warning"…
         let scored = doc
             .findings
             .iter()
@@ -490,13 +818,36 @@ mod tests {
             .unwrap();
         assert_eq!(scored.severity, Severity::Critical);
 
-        // An explicit result-level `error` wins over everything.
+        // …and even though this result carries an explicit `level: "error"`.
+        // The score is the more precise of the two statements.
         let explicit = doc
             .findings
             .iter()
             .find(|f| f.description == "Another one")
             .unwrap();
-        assert_eq!(explicit.severity, Severity::Major);
+        assert_eq!(explicit.severity, Severity::Critical);
+    }
+
+    #[test]
+    fn level_drives_severity_when_there_is_no_score() {
+        let (doc, _) = parse(
+            r#"{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"t"}},"results":[
+                 {"ruleId":"a","level":"error","message":{"text":"x"}},
+                 {"ruleId":"b","level":"note","message":{"text":"y"}},
+                 {"ruleId":"c","message":{"text":"z"}}
+               ]}]}"#,
+        );
+        let by = |d: &str| {
+            doc.findings
+                .iter()
+                .find(|f| f.description == d)
+                .unwrap()
+                .severity
+        };
+        assert_eq!(by("x"), Severity::Major);
+        assert_eq!(by("y"), Severity::Info);
+        // SARIF's own default when nothing says otherwise.
+        assert_eq!(by("z"), Severity::Minor);
     }
 
     #[test]
@@ -512,6 +863,143 @@ mod tests {
     fn reports_dropped_code_flows() {
         let (_, warnings) = parse(SAMPLE);
         assert!(warnings.messages().any(|w| w.contains("code flows")));
+    }
+
+    // ---- writing --------------------------------------------------------
+
+    fn render(doc: &FindingsDoc) -> (serde_json::Value, Warnings) {
+        let mut buffer = Vec::new();
+        let mut ctx = FormatCtx::new(Some("2.1.0"));
+        write(&Doc::Findings(doc.clone()), &mut buffer, &mut ctx).unwrap();
+        (
+            serde_json::from_slice(&buffer).expect("the writer emits valid JSON"),
+            ctx.into_warnings(),
+        )
+    }
+
+    fn finding(rule: Option<&str>, description: &str, severity: Severity) -> Finding {
+        let mut finding = Finding::new(description, severity);
+        finding.rule_id = rule.map(str::to_string);
+        finding.location = Location {
+            path: "src/a.js".into(),
+            begin_line: Some(3),
+            ..Default::default()
+        };
+        finding
+    }
+
+    #[test]
+    fn builds_a_rule_table_deduplicated_by_rule_id() {
+        let doc = FindingsDoc {
+            findings: vec![
+                finding(Some("no-var"), "Unexpected var", Severity::Minor),
+                finding(Some("no-var"), "Unexpected var", Severity::Minor),
+                finding(Some("semi"), "Missing semicolon", Severity::Major),
+            ],
+            ..Default::default()
+        };
+        let (json, _) = render(&doc);
+
+        let rules = &json["runs"][0]["tool"]["driver"]["rules"];
+        assert_eq!(rules.as_array().unwrap().len(), 2);
+        assert_eq!(rules[0]["id"], "no-var");
+        assert_eq!(rules[1]["id"], "semi");
+
+        // Results point at the table by index, and the two `no-var` findings
+        // share one entry.
+        let results = json["runs"][0]["results"].as_array().unwrap();
+        assert_eq!(results[0]["ruleIndex"], 0);
+        assert_eq!(results[1]["ruleIndex"], 0);
+        assert_eq!(results[2]["ruleIndex"], 1);
+    }
+
+    #[test]
+    fn reports_conflicting_metadata_for_one_rule() {
+        let doc = FindingsDoc {
+            findings: vec![
+                finding(Some("no-var"), "Unexpected var", Severity::Minor),
+                finding(Some("no-var"), "Something else entirely", Severity::Minor),
+            ],
+            ..Default::default()
+        };
+        let (json, warnings) = render(&doc);
+
+        // First one wins…
+        assert_eq!(
+            json["runs"][0]["tool"]["driver"]["rules"][0]["shortDescription"]["text"],
+            "Unexpected var"
+        );
+        // …and that is not silent.
+        assert!(warnings
+            .messages()
+            .any(|m| m.contains("disagreed on its metadata")));
+    }
+
+    #[test]
+    fn security_severity_is_reserved_for_findings_with_identifiers() {
+        let mut lint = finding(Some("no-var"), "style nit", Severity::Critical);
+        let mut vuln = finding(Some("cwe-79"), "XSS", Severity::Critical);
+        vuln.identifiers.push(Identifier {
+            kind: "cwe".into(),
+            value: "CWE-079".into(),
+            url: None,
+        });
+        lint.location.path = "a.js".into();
+        vuln.location.path = "b.js".into();
+
+        let (json, warnings) = render(&FindingsDoc {
+            findings: vec![lint, vuln],
+            ..Default::default()
+        });
+        let rules = &json["runs"][0]["tool"]["driver"]["rules"];
+
+        // A style lint must not be filed as a security finding…
+        assert!(rules[0]["properties"]["security-severity"].is_null());
+        // …while a real one keeps its rank, which `level` alone cannot express.
+        assert_eq!(rules[1]["properties"]["security-severity"], "8.0");
+        assert!(warnings
+            .messages()
+            .any(|m| m.contains("collapsed to level")));
+    }
+
+    #[test]
+    fn findings_without_a_rule_id_are_still_emitted() {
+        let (json, warnings) = render(&FindingsDoc {
+            findings: vec![finding(None, "no rule here", Severity::Minor)],
+            ..Default::default()
+        });
+
+        let result = &json["runs"][0]["results"][0];
+        assert!(result["ruleId"].is_null());
+        assert!(result["ruleIndex"].is_null());
+        assert_eq!(result["message"]["text"], "no rule here");
+        assert!(warnings.messages().any(|m| m.contains("no rule id")));
+    }
+
+    #[test]
+    fn a_security_finding_keeps_its_severity_across_a_round_trip() {
+        let (doc, _) = parse(SAMPLE);
+        let original = doc
+            .findings
+            .iter()
+            .find(|f| f.description == "Dangerous call")
+            .unwrap()
+            .clone();
+        assert_eq!(original.severity, Severity::Critical);
+
+        let mut buffer = Vec::new();
+        let mut ctx = FormatCtx::new(Some("2.1.0"));
+        write(&Doc::Findings(doc), &mut buffer, &mut ctx).unwrap();
+
+        let (again, _) = parse(std::str::from_utf8(&buffer).unwrap());
+        let reread = again
+            .findings
+            .iter()
+            .find(|f| f.description == "Dangerous call")
+            .unwrap();
+        assert_eq!(reread.severity, Severity::Critical);
+        assert_eq!(reread.location, original.location);
+        assert_eq!(reread.fingerprint, original.fingerprint);
     }
 
     #[test]

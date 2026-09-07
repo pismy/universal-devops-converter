@@ -258,7 +258,22 @@ pub static FORMATS: &[FormatSpec] = &[
         aliases: &["sarif-json"],
         category: Category::Quality,
         description: "SARIF 2.1.0 (semgrep, CodeQL, gosec, bandit, Checkov…)",
-        write_notes: &[],
+        write_notes: &[
+            (
+                NoteKind::Degraded,
+                "rule metadata is rebuilt by deduplicating findings on their rule id; the first \
+                 one seen defines the rule",
+            ),
+            (
+                NoteKind::Degraded,
+                "critical and blocker collapse to level \"error\" unless the finding carries a \
+                 security identifier",
+            ),
+            (
+                NoteKind::Lossy,
+                "identifiers other than CWE survive only as rule tags",
+            ),
+        ],
         // SARIF 1.0 and the 2.0 drafts are structurally different documents
         // (`resources.rules` moved to `tool.driver.rules`, `files` became
         // `artifacts`); if they ever get support they become their own format
@@ -266,7 +281,7 @@ pub static FORMATS: &[FormatSpec] = &[
         versions: &["2.1.0"],
         default_version: Some("2.1.0"),
         read: Some(formats::quality::sarif::read),
-        write: None,
+        write: Some(formats::quality::sarif::write),
     },
     FormatSpec {
         id: "codeclimate",
