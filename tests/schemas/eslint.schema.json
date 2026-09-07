@@ -1,0 +1,52 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "ESLint json formatter output",
+  "description": "Written by this project: ESLint documents the shape in its formatter guide but publishes no JSON Schema for it. Strict about what identifies the format (filePath plus messages, and the two-level severity) and permissive about the fields ESLint adds over time.",
+  "type": "array",
+  "items": {
+    "type": "object",
+    "required": ["filePath", "messages"],
+    "properties": {
+      "filePath": { "type": "string", "minLength": 1 },
+      "messages": { "type": "array", "items": { "$ref": "#/$defs/message" } },
+      "suppressedMessages": { "type": "array", "items": { "$ref": "#/$defs/message" } },
+      "errorCount": { "type": "integer", "minimum": 0 },
+      "fatalErrorCount": { "type": "integer", "minimum": 0 },
+      "warningCount": { "type": "integer", "minimum": 0 },
+      "fixableErrorCount": { "type": "integer", "minimum": 0 },
+      "fixableWarningCount": { "type": "integer", "minimum": 0 },
+      "source": { "type": "string" },
+      "output": { "type": "string" },
+      "usedDeprecatedRules": { "type": "array" },
+      "stats": { "type": "object" }
+    }
+  },
+  "$defs": {
+    "message": {
+      "type": "object",
+      "required": ["message"],
+      "properties": {
+        "ruleId": { "type": ["string", "null"] },
+        "severity": { "type": "integer", "enum": [0, 1, 2] },
+        "message": { "type": "string" },
+        "messageId": { "type": "string" },
+        "fatal": { "type": "boolean" },
+        "line": { "type": "integer", "minimum": 0 },
+        "column": { "type": "integer", "minimum": 0 },
+        "endLine": { "type": "integer", "minimum": 0 },
+        "endColumn": { "type": "integer", "minimum": 0 },
+        "nodeType": { "type": ["string", "null"] },
+        "fix": {
+          "type": "object",
+          "required": ["range", "text"],
+          "properties": {
+            "range": { "type": "array", "items": { "type": "integer" }, "minItems": 2, "maxItems": 2 },
+            "text": { "type": "string" }
+          }
+        },
+        "suggestions": { "type": "array" },
+        "suppressions": { "type": "array" }
+      }
+    }
+  }
+}

@@ -254,6 +254,11 @@ Two non-negotiable rules:
 2. **Ambiguity is a failure.** A bare JSON array could be pa11y or Code Climate: the tool asks for
    `--input-format` instead of guessing.
 
+   Refusing to guess is not refusing to look. Several array-shaped formats are told apart by
+   evidence specific to one of them — ESLint's entries pair `filePath` with `messages`, which
+   nothing else does — and those resolve. What stays ambiguous is what is distinguished only by
+   fields either format may legally omit, and that still fails.
+
 Detection only inspects the **first 64 KiB** of the stream, which is enough to reach the
 discriminating keys of every supported format.
 
@@ -341,7 +346,7 @@ Primary sink: **Code Climate JSON**, in its GitLab flavour
 | Code Climate | ✅ | ✅ | full specification |
 | Code Climate (GitLab) | ✅ | ✅ | subset; `fingerprint` is mandatory |
 | SARIF 2.1.0 | ✅ | ✅ | semgrep, CodeQL, gosec, bandit, Checkov…; writing it is what reaches GitHub code scanning |
-| ESLint JSON | 🔜 | — | |
+| ESLint JSON | ✅ | ❌ | Read-only: consumed by ESLint's own formatters and by editors; the pivot has no `fix`, `suggestions` or `nodeType` to put back. Richer than ESLint's `checkstyle` reporter — it keeps `endLine`/`endColumn` and tells a parse error from a rule violation |
 | PMD XML | 💭 | — | |
 | SpotBugs XML | 💭 | — | |
 | SonarQube Generic Issue | 💭 | 💭 | |
@@ -539,7 +544,7 @@ read.
 3. 🔜 **Tests** — JUnit done (tolerant reader + writer); TRX / `go test -json` / TAP remain.
 4. ✅ **Quality** — Checkstyle (read), SARIF (read + write) and Code Climate (read + write,
    GitLab flavour included). A Checkstyle *writer* is deliberately not planned: nothing consumes
-   Checkstyle that does not also read a better format. ESLint JSON next, if asked for.
+   Checkstyle that does not also read a better format.
 5. 🔜 **Security** — SARIF → GitLab SAST done. Dependency and container scanning need the pivot
    to carry a versioned component, an image and an OS; that arrives with the Trivy and Grype
    readers, which is the order to do them in.

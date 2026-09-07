@@ -134,6 +134,9 @@ udc -i build/logs/clover.xml -t cobertura -o coverage.xml --source-root "$PWD"
 # Any linter with a Checkstyle reporter → GitLab Code Quality
 eslint -f checkstyle . | udc -f checkstyle -t codeclimate-gitlab -o gl-code-quality.json
 
+# ESLint's native output keeps more than its checkstyle reporter does
+eslint -f json . | udc -t codeclimate-gitlab -o gl-code-quality.json
+
 # SARIF (semgrep, CodeQL, gosec…) → GitLab Code Quality
 semgrep --sarif | udc -f sarif -t codeclimate-gitlab -o gl-code-quality.json
 
@@ -231,7 +234,7 @@ Today:
 | ------------ | ------------------------------- | ----------------------------------- |
 | **Coverage** | LCOV, Clover, Cobertura, Go, Istanbul, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
 | **Tests**    | JUnit XML                       | JUnit XML                           |
-| **Quality**  | Checkstyle, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
+| **Quality**  | Checkstyle, ESLint, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF                           | SARIF, GitLab SAST                         |
 
 Any readable format converts to any writable format **sharing a category**.

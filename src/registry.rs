@@ -338,6 +338,20 @@ pub static FORMATS: &[FormatSpec] = &[
         write: None,
     },
     FormatSpec {
+        id: "eslint",
+        aliases: &["eslint-json"],
+        categories: &[Category::Quality],
+        description: "ESLint json formatter output",
+        write_notes: &[],
+        versions: &[],
+        default_version: None,
+        read: Some(formats::quality::eslint::read),
+        // Read-only: ESLint's JSON is consumed by ESLint's own formatters and
+        // by editors talking to ESLint, and the pivot has no `fix`,
+        // `suggestions` or `nodeType` to put back.
+        write: None,
+    },
+    FormatSpec {
         id: "sarif",
         aliases: &["sarif-json"],
         categories: &[Category::Quality, Category::Security],

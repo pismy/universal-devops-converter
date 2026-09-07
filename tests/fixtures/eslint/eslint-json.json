@@ -1,0 +1,52 @@
+[
+      {
+        "filePath": "/home/runner/work/acme/acme/src/index.js",
+        "messages": [
+          {
+            "ruleId": "no-unused-vars",
+            "severity": 2,
+            "message": "'fs' is defined but never used.",
+            "line": 3,
+            "column": 1,
+            "nodeType": "Identifier",
+            "messageId": "unusedVar",
+            "endLine": 3,
+            "endColumn": 10
+          },
+          {
+            "ruleId": "no-var",
+            "severity": 1,
+            "message": "Unexpected var, use let or const instead.",
+            "line": 11,
+            "column": 5,
+            "endLine": 11,
+            "endColumn": 8,
+            "fix": { "range": [120, 123], "text": "let" }
+          }
+        ],
+        "suppressedMessages": [
+          { "ruleId": "no-console", "severity": 1, "message": "Unexpected console statement.",
+            "line": 20, "column": 3 }
+        ],
+        "errorCount": 1,
+        "warningCount": 1
+      },
+      {
+        "filePath": "/home/runner/work/acme/acme/src/broken.js",
+        "messages": [
+          {
+            "ruleId": null,
+            "fatal": true,
+            "severity": 2,
+            "message": "Parsing error: Unexpected token }",
+            "line": 7,
+            "column": 1
+          }
+        ],
+        "suppressedMessages": [],
+        "errorCount": 1,
+        "warningCount": 0
+      },
+      { "filePath": "/home/runner/work/acme/acme/src/clean.js", "messages": [],
+        "suppressedMessages": [], "errorCount": 0, "warningCount": 0 }
+    ]

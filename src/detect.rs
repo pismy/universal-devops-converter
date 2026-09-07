@@ -133,13 +133,20 @@ fn xml_root_tag(text: &str) -> Option<(String, String)> {
 }
 
 fn sniff_json(text: &str) -> Outcome {
-    // A bare array carries no discriminator at all — every array-shaped format
-    // (Code Climate, pa11y, axe) looks identical from here.
+    let has = |needle: &str| text.contains(needle);
+
     if text.starts_with('[') {
+        // Refusing to guess does not mean refusing to look. ESLint's output is
+        // an array like Code Climate's and pa11y's, but only its entries pair
+        // `filePath` with `messages`, so the evidence is specific rather than
+        // circumstantial.
+        if has(r#""filePath""#) && has(r#""messages""#) {
+            return Some(Ok("eslint"));
+        }
+        // Anything else array-shaped stays ambiguous: Code Climate and pa11y
+        // are told apart only by fields either may legally omit.
         return None;
     }
-
-    let has = |needle: &str| text.contains(needle);
 
     if has(r#""bomFormat""#) || has(r#""specVersion""#) && has(r#""components""#) {
         return Some(Err(Planned {
@@ -272,6 +279,14 @@ mod tests {
         assert_eq!(
             id_of(r#"{"src/a.js":{"path":"src/a.js","statementMap":{},"s":{}}}"#),
             "istanbul"
+        );
+    }
+
+    #[test]
+    fn identifies_eslint_output_among_the_array_shaped_formats() {
+        assert_eq!(
+            id_of(r#"[{"filePath":"src/a.js","messages":[],"errorCount":0}]"#),
+            "eslint"
         );
     }
 

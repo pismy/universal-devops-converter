@@ -1,0 +1,10 @@
+[
+  {
+    "type": "issue",
+    "check_name": "no-var",
+    "description": "Unexpected var, use let or const instead.",
+    "fingerprint": "1b3d5f7a9c2e4068a1c3e5f7092b4d6e",
+    "severity": "minor",
+    "location": { "path": "src/index.js", "lines": { "begin": 11 } }
+  }
+]
