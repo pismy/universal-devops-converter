@@ -322,7 +322,7 @@ attributes, optional `<testsuites>` root, `<skipped>` vs `status`).
 | Format | Read | Write | Notes |
 |---|---|---|---|
 | JUnit XML | ✅ | ✅ | tolerant multi-dialect reader |
-| TRX | 🔜 | — | MSTest / `dotnet test` |
+| TRX | ✅ | ❌ | MSTest / `dotnet test`. Read-only: a TRX file is a web of GUID cross-references between `Results`, `TestDefinitions`, `TestEntries` and `TestLists` that would all have to be fabricated, and its consumers read JUnit too |
 | `go test -json` | 🔜 | — | NDJSON |
 | TAP | 🔜 | — | Test Anything Protocol 13/14 |
 | NUnit 2/3 | 💭 | — | |
@@ -541,7 +541,7 @@ read.
    CI/release, install scripts.
 2. ✅ **Coverage** — LCOV, Cobertura, JaCoCo (the LCOV → Cobertura conversion validates the design
    end to end).
-3. 🔜 **Tests** — JUnit done (tolerant reader + writer); TRX / `go test -json` / TAP remain.
+3. 🔜 **Tests** — JUnit (reader + writer) and TRX (reader) done; `go test -json` and TAP remain.
 4. ✅ **Quality** — Checkstyle (read), SARIF (read + write) and Code Climate (read + write,
    GitLab flavour included). A Checkstyle *writer* is deliberately not planned: nothing consumes
    Checkstyle that does not also read a better format.

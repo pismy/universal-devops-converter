@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="7e4a8b21-0000-0000-0000-000000000001" name="runner 2026-06-26 12:00:00"
+         xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2026-06-26T12:00:00.0000000+00:00" start="2026-06-26T12:00:01.0000000+00:00"
+         finish="2026-06-26T12:00:03.0000000+00:00"/>
+  <Results>
+    <UnitTestResult executionId="e1" testId="t1" testName="Acme.Tests.CalcTests.Adds"
+                    computerName="build-01" duration="00:00:00.5120000" outcome="Passed"/>
+    <UnitTestResult executionId="e2" testId="t2" testName="Acme.Tests.CalcTests.Divides"
+                    computerName="build-01" duration="00:00:00.3010000" outcome="Failed">
+      <Output>
+        <StdOut>dividing now</StdOut>
+        <ErrorInfo>
+          <Message>Assert.AreEqual failed. Expected:&lt;2&gt;. Actual:&lt;3&gt;.</Message>
+          <StackTrace>   at Acme.Tests.CalcTests.Divides() in /src/CalcTests.cs:line 42</StackTrace>
+        </ErrorInfo>
+      </Output>
+    </UnitTestResult>
+    <UnitTestResult executionId="e3" testId="t3" testName="Acme.Tests.CalcTests.Later"
+                    duration="00:00:00.0000000" outcome="NotExecuted"/>
+    <UnitTestResult executionId="e4" testId="t4" testName="Acme.Tests.SlowTests.Waits"
+                    duration="00:01:30.0000000" outcome="Timeout"/>
+    <UnitTestResult executionId="e5" testId="t5" testName="Acme.Tests.DataTests.Rows"
+                    outcome="Failed">
+      <InnerResults>
+        <UnitTestResult executionId="e5a" testId="t5" testName="Rows (a: 1)"
+                        duration="00:00:00.0100000" outcome="Passed"/>
+        <UnitTestResult executionId="e5b" testId="t5" testName="Rows (a: 2)"
+                        duration="00:00:00.0200000" outcome="Failed">
+          <Output><ErrorInfo><Message>row two failed</Message></ErrorInfo></Output>
+        </UnitTestResult>
+      </InnerResults>
+    </UnitTestResult>
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="Adds" storage="acme.tests.dll" id="t1">
+      <TestMethod codeBase="acme.tests.dll" className="Acme.Tests.CalcTests" name="Adds"/>
+    </UnitTest>
+    <UnitTest name="Divides" storage="acme.tests.dll" id="t2">
+      <TestMethod codeBase="acme.tests.dll" className="Acme.Tests.CalcTests" name="Divides"/>
+    </UnitTest>
+    <UnitTest name="Later" storage="acme.tests.dll" id="t3">
+      <TestMethod codeBase="acme.tests.dll" className="Acme.Tests.CalcTests" name="Later"/>
+    </UnitTest>
+    <UnitTest name="Waits" storage="acme.tests.dll" id="t4">
+      <TestMethod codeBase="acme.tests.dll" className="Acme.Tests.SlowTests" name="Waits"/>
+    </UnitTest>
+    <UnitTest name="Rows" storage="acme.tests.dll" id="t5">
+      <TestMethod codeBase="acme.tests.dll" className="Acme.Tests.DataTests" name="Rows"/>
+    </UnitTest>
+  </TestDefinitions>
+  <ResultSummary outcome="Failed">
+    <Counters total="5" executed="4" passed="2" failed="2" timeout="1"/>
+  </ResultSummary>
+</TestRun>

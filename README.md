@@ -146,6 +146,10 @@ eslint -f checkstyle . | udc -f checkstyle -t sarif -o results.sarif
 # any SAST tool → GitLab's security dashboard
 semgrep --sarif | udc -f sarif -t gitlab-sast -o gl-sast-report.json
 
+# dotnet test writes TRX, which nothing outside the Microsoft toolchain reads
+dotnet test --logger trx --results-directory .
+udc -i TestResults/*.trx -t junit -o junit.xml
+
 # Merge sharded test runs into a single JUnit report
 udc -i results/shard1.xml -i results/shard2.xml -t junit -o junit.xml
 
@@ -233,7 +237,7 @@ Today:
 | Category     | Read                            | Write                               |
 | ------------ | ------------------------------- | ----------------------------------- |
 | **Coverage** | LCOV, Clover, Cobertura, Go, Istanbul, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
-| **Tests**    | JUnit XML                       | JUnit XML                           |
+| **Tests**    | JUnit XML, TRX                  | JUnit XML                           |
 | **Quality**  | Checkstyle, ESLint, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF                           | SARIF, GitLab SAST                         |
 

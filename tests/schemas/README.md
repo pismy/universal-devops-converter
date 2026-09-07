@@ -31,6 +31,7 @@ tightens.
 | `codeclimate-gitlab.schema.json` | GitLab Code Quality | GitLab documents the contract in prose and publishes no schema. |
 | `istanbul.schema.json` | Istanbul coverage map | `istanbul-lib-coverage` defines the shape in code (its `_coverageSchema` hash) and publishes no JSON Schema. |
 | `eslint.schema.json` | ESLint json output | ESLint documents the shape in its formatter guide but publishes no JSON Schema for it. |
+| `trx.xsd` | TRX (Visual Studio test results) | Microsoft ships `vstst.xsd` inside the Visual Studio installation and publishes it at no stable URL. Ours covers the subset `dotnet test` emits. |
 | `clover.xsd` | Clover XML | OpenClover ships a schema inside its distribution but publishes none at a stable URL a test suite can vendor from. Ours describes what PHPUnit and Jest actually emit. |
 
 ## Formats with no schema

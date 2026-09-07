@@ -139,6 +139,7 @@ pub fn schema_for(format_id: &str) -> Schema {
         "cobertura" => Schema::Dtd("cobertura-04.dtd"),
         "jacoco" => Schema::Dtd("jacoco-report-1.1.dtd"),
         "junit" => Schema::Xsd("junit.xsd"),
+        "trx" => Schema::Xsd("trx.xsd"),
         "istanbul" => Schema::Json("istanbul.schema.json"),
         "eslint" => Schema::Json("eslint.schema.json"),
         "sarif" => Schema::Json("sarif-2.1.0.json"),

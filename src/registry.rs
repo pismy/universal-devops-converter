@@ -325,6 +325,20 @@ pub static FORMATS: &[FormatSpec] = &[
         read: Some(formats::tests::junit::read),
         write: Some(formats::tests::junit::write),
     },
+    FormatSpec {
+        id: "trx",
+        aliases: &["mstest", "vstest"],
+        categories: &[Category::Tests],
+        description: "TRX — Visual Studio test results (`dotnet test`)",
+        write_notes: &[],
+        versions: &[],
+        default_version: None,
+        read: Some(formats::tests::trx::read),
+        // Read-only: a TRX file is a web of GUID cross-references between
+        // Results, TestDefinitions, TestEntries and TestLists that would all
+        // have to be fabricated, and its consumers read JUnit too.
+        write: None,
+    },
     // ---- Code quality ------------------------------------------------------
     FormatSpec {
         id: "checkstyle",

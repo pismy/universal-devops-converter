@@ -77,10 +77,7 @@ fn sniff_xml(text: &str) -> Outcome {
             name: "OpenCover XML",
             category: "coverage",
         })),
-        "TestRun" => Some(Err(Planned {
-            name: "TRX (MSTest)",
-            category: "tests",
-        })),
+        "TestRun" => Some(Ok("trx")),
         _ => None,
     }
 }
@@ -217,6 +214,16 @@ mod tests {
         assert_eq!(id_of("<testsuites/>"), "junit");
         assert_eq!(id_of("<testsuite name=\"a\"/>"), "junit");
         assert_eq!(id_of("<checkstyle version=\"8\"/>"), "checkstyle");
+    }
+
+    #[test]
+    fn identifies_trx_by_its_test_run_root() {
+        assert_eq!(
+            id_of(
+                r#"<TestRun id="x" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"/>"#
+            ),
+            "trx"
+        );
     }
 
     #[test]

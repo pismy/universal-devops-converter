@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  TRX (Visual Studio test results) written by this project.
+
+  Microsoft ships vstst.xsd inside the Visual Studio installation and publishes
+  it at no stable URL a test suite can vendor from. This describes the subset
+  `dotnet test` emits and this reader consumes: the run, its results with their
+  nesting and output, and the definitions that give a result its class.
+
+  Namespace-aware, because TRX files declare a default namespace and a schema
+  that ignored it would validate nothing. Permissive about the many sections
+  that carry no information for a test report — TestEntries, TestLists,
+  TestSettings — and strict about the nesting of Results and TestDefinitions,
+  which is what the reader depends on.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:t="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"
+           targetNamespace="http://microsoft.com/schemas/VisualStudio/TeamTest/2010"
+           elementFormDefault="qualified">
+
+  <xs:element name="TestRun">
+    <xs:complexType>
+      <xs:choice minOccurs="0" maxOccurs="unbounded">
+        <xs:element name="Times" type="t:times"/>
+        <xs:element name="TestSettings" type="t:anything"/>
+        <xs:element name="Results" type="t:results"/>
+        <xs:element name="TestDefinitions" type="t:definitions"/>
+        <xs:element name="TestEntries" type="t:anything"/>
+        <xs:element name="TestLists" type="t:anything"/>
+        <xs:element name="ResultSummary" type="t:anything"/>
+      </xs:choice>
+      <xs:attribute name="id" type="xs:string"/>
+      <xs:attribute name="name" type="xs:string"/>
+      <xs:attribute name="runUser" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="times">
+    <xs:attribute name="creation" type="xs:string"/>
+    <xs:attribute name="queuing" type="xs:string"/>
+    <xs:attribute name="start" type="xs:string"/>
+    <xs:attribute name="finish" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="results">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="UnitTestResult" type="t:result"/>
+      <xs:element name="TestResult" type="t:result"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:complexType name="result">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="Output" type="t:output"/>
+      <xs:element name="InnerResults" type="t:results"/>
+      <xs:element name="ResultFiles" type="t:anything"/>
+      <xs:element name="CollectorDataEntries" type="t:anything"/>
+    </xs:choice>
+    <xs:attribute name="executionId" type="xs:string"/>
+    <xs:attribute name="parentExecutionId" type="xs:string"/>
+    <xs:attribute name="testId" type="xs:string"/>
+    <xs:attribute name="testName" type="xs:string"/>
+    <xs:attribute name="computerName" type="xs:string"/>
+    <!-- A .NET TimeSpan: [d.]hh:mm:ss[.fffffff] -->
+    <xs:attribute name="duration" type="xs:string"/>
+    <xs:attribute name="startTime" type="xs:string"/>
+    <xs:attribute name="endTime" type="xs:string"/>
+    <xs:attribute name="testType" type="xs:string"/>
+    <xs:attribute name="outcome" type="xs:string"/>
+    <xs:attribute name="testListId" type="xs:string"/>
+    <xs:attribute name="relativeResultsDirectory" type="xs:string"/>
+    <xs:attribute name="dataRowInfo" type="xs:string"/>
+    <xs:attribute name="resultType" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="output">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="StdOut" type="xs:string"/>
+      <xs:element name="StdErr" type="xs:string"/>
+      <xs:element name="DebugTrace" type="xs:string"/>
+      <xs:element name="TextMessages" type="t:anything"/>
+      <xs:element name="ErrorInfo" type="t:errorInfo"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:complexType name="errorInfo">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="Message" type="xs:string"/>
+      <xs:element name="StackTrace" type="xs:string"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:complexType name="definitions">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="UnitTest" type="t:unitTest"/>
+      <xs:element name="WebTest" type="t:anything"/>
+    </xs:choice>
+  </xs:complexType>
+
+  <xs:complexType name="unitTest">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="Execution" type="t:anything"/>
+      <xs:element name="TestMethod" type="t:testMethod"/>
+      <xs:element name="Properties" type="t:anything"/>
+      <xs:element name="TestCategory" type="t:anything"/>
+      <xs:element name="Description" type="xs:string"/>
+    </xs:choice>
+    <xs:attribute name="id" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="storage" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="testMethod">
+    <xs:attribute name="codeBase" type="xs:string"/>
+    <xs:attribute name="adapterTypeName" type="xs:string"/>
+    <xs:attribute name="className" type="xs:string"/>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+
+  <!-- Sections the reader ignores: accepted whatever they contain. -->
+  <xs:complexType name="anything" mixed="true">
+    <xs:sequence>
+      <xs:any processContents="skip" minOccurs="0" maxOccurs="unbounded"/>
+    </xs:sequence>
+    <xs:anyAttribute processContents="skip"/>
+  </xs:complexType>
+
+</xs:schema>
