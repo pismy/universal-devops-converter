@@ -171,10 +171,7 @@ fn sniff_json(text: &str) -> Outcome {
         return Some(Ok("istanbul"));
     }
     if has(r#""SchemaVersion""#) && has(r#""Results""#) {
-        return Some(Err(Planned {
-            name: "Trivy JSON",
-            category: "security",
-        }));
+        return Some(Ok("trivy-json"));
     }
     if has(r#""matches""#) && has(r#""vulnerability""#) {
         return Some(Err(Planned {
@@ -349,6 +346,14 @@ mod tests {
         let error = detect(br#"[{"check_name":"x"}]"#, "input").unwrap_err();
         assert!(matches!(error, Error::Detect(_)));
         assert!(error.to_string().contains("--input-format"));
+    }
+
+    #[test]
+    fn identifies_a_trivy_report() {
+        assert_eq!(
+            id_of(r#"{"SchemaVersion":2,"ArtifactName":"x","Results":[]}"#),
+            "trivy-json"
+        );
     }
 
     #[test]

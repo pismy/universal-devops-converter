@@ -451,6 +451,7 @@ fn location_of(result: &RawResult) -> Location {
         end_line: region.and_then(|r| r.end_line.or(r.start_line)),
         begin_column: region.and_then(|r| r.start_column),
         end_column: region.and_then(|r| r.end_column),
+        ..Default::default()
     }
 }
 

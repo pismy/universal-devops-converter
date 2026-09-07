@@ -127,6 +127,7 @@ fn location(raw: Option<RawLocation>) -> Location {
             end_line: positions.end.as_ref().and_then(|c| c.line),
             begin_column: positions.begin.as_ref().and_then(|c| c.column),
             end_column: positions.end.as_ref().and_then(|c| c.column),
+            ..Default::default()
         };
     }
 
@@ -135,8 +136,7 @@ fn location(raw: Option<RawLocation>) -> Location {
         path,
         begin_line: lines.as_ref().and_then(|l| l.begin),
         end_line: lines.as_ref().and_then(|l| l.end),
-        begin_column: None,
-        end_column: None,
+        ..Default::default()
     }
 }
 

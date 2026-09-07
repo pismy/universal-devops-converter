@@ -146,6 +146,9 @@ pub fn schema_for(format_id: &str) -> Schema {
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
         "gitlab-sast" => Schema::Json("gitlab-sast-15.2.5.json"),
+        "trivy-json" => {
+            Schema::None("Trivy documents the report in its own docs and publishes no JSON Schema")
+        }
         "go-coverprofile" | "lcov" | "tap" => {
             Schema::None("a line-oriented text format with no formal grammar")
         }

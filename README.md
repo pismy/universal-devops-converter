@@ -146,6 +146,9 @@ eslint -f checkstyle . | udc -f checkstyle -t sarif -o results.sarif
 # any SAST tool → GitLab's security dashboard
 semgrep --sarif | udc -f sarif -t gitlab-sast -o gl-sast-report.json
 
+# Trivy covers dependencies, images, IaC and secrets in one report
+trivy image --format json acme/api:1.2.3 | udc -t gitlab-sast -o gl-sast-report.json
+
 # TAP, from node-tap, prove, or anything else that speaks it
 tap --reporter=tap | udc -f tap -t junit -o junit.xml
 
@@ -245,7 +248,7 @@ Today:
 | **Coverage** | LCOV, Clover, Cobertura, Go, Istanbul, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
 | **Tests**    | JUnit XML, TRX, `go test -json`, TAP | JUnit XML                      |
 | **Quality**  | Checkstyle, ESLint, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
-| **Security** | SARIF                           | SARIF, GitLab SAST                         |
+| **Security** | SARIF, Trivy                    | SARIF, GitLab SAST                         |
 
 Any readable format converts to any writable format **sharing a category**.
 Converting a Checkstyle report into Cobertura is an error, not a best-effort

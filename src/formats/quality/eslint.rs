@@ -136,6 +136,7 @@ pub fn read(input: &[u8], ctx: &mut FormatCtx) -> Result<Doc> {
                 end_line: message.end_line.or(message.line),
                 begin_column: message.column,
                 end_column: message.end_column,
+                ..Default::default()
             };
             if message.fatal == Some(true) {
                 // There is no rule to blame, so say what happened instead —

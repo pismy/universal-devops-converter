@@ -404,10 +404,10 @@ Three constraints in those schemas shape the writers:
 |---|---|---|---|
 | SARIF 2.1.0 | ✅ | ✅ | universal input; declares both categories (§3.5) |
 | GitLab SAST | — | ✅ | `gitlab-sast`, schema 15.2.5 |
-| GitLab Dependency Scanning | — | 🔜 | blocked on the pivot carrying a versioned component |
-| GitLab Container Scanning | — | 🔜 | blocked on the pivot carrying an image and an OS |
+| GitLab Dependency Scanning | — | 🔜 | unblocked: the pivot now carries a versioned component |
+| GitLab Container Scanning | — | 🔜 | unblocked: the pivot now carries an image and an OS |
 | GitLab Secret Detection / DAST | — | 💭 | |
-| Trivy JSON | 🔜 | — | dependencies + containers + IaC + secrets |
+| Trivy JSON | ✅ | ❌ | dependencies + containers + IaC + secrets, in one report. Read-only: Trivy writes it and nothing else does, and Trivy already emits SARIF, CycloneDX and GitLab's own format on request |
 | Grype JSON | 🔜 | — | |
 | OSV / osv-scanner | 💭 | — | |
 | `npm audit` JSON | 💭 | — | |
@@ -546,8 +546,8 @@ read.
 4. ✅ **Quality** — Checkstyle (read), SARIF (read + write) and Code Climate (read + write,
    GitLab flavour included). A Checkstyle *writer* is deliberately not planned: nothing consumes
    Checkstyle that does not also read a better format.
-5. 🔜 **Security** — SARIF → GitLab SAST done. Dependency and container scanning need the pivot
-   to carry a versioned component, an image and an OS; that arrives with the Trivy and Grype
-   readers, which is the order to do them in.
+5. 🔜 **Security** — SARIF and Trivy in, SARIF and GitLab SAST out. The pivot now carries a
+   versioned component, an image and an operating system, which is what the dependency- and
+   container-scanning writers were waiting for; they are the next step, then the Grype reader.
 6. **SBOM** — CycloneDX ↔ SPDX.
 7. **Accessibility, performance** — on demand.

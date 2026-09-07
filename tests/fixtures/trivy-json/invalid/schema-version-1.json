@@ -1,0 +1,6 @@
+{
+  "SchemaVersion": 1,
+  "Results": [
+    { "Target": "acme (debian 11)", "Vulnerabilities": [] }
+  ]
+}

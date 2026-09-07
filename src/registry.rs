@@ -450,6 +450,19 @@ pub static FORMATS: &[FormatSpec] = &[
     },
     // ---- Security ----------------------------------------------------------
     FormatSpec {
+        id: "trivy-json",
+        aliases: &["trivy"],
+        categories: &[Category::Security],
+        description: "Trivy JSON — dependencies, images, IaC and secrets in one report",
+        write_notes: &[],
+        versions: &["2"],
+        default_version: Some("2"),
+        read: Some(formats::security::trivy::read),
+        // Read-only: Trivy writes this and nothing else does, and Trivy already
+        // emits SARIF, CycloneDX and GitLab's own format on request.
+        write: None,
+    },
+    FormatSpec {
         id: "gitlab-sast",
         aliases: &["gitlab-security"],
         categories: &[Category::Security],

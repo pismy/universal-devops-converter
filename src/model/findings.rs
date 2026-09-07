@@ -61,14 +61,39 @@ pub struct Identifier {
     pub url: Option<String>,
 }
 
+/// The component a finding is about, when the subject is a dependency rather
+/// than a line of code.
+///
+/// A vulnerability is not located at a place in a file the way a lint is: it is
+/// located at *a version of a package*, and the fix is another version. Sinks
+/// that accept vulnerabilities require exactly that, which is why it lives here
+/// and not in the description text.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Component {
+    pub name: String,
+    pub version: Option<String>,
+    /// The first version that is not affected, when the source knows one.
+    pub fixed_version: Option<String>,
+    /// Package URL, the one identifier that travels between ecosystems.
+    pub purl: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Location {
-    /// Repository-relative path, `/`-separated.
+    /// Repository-relative path, `/`-separated. Empty for a finding that is not
+    /// in a file at all — an operating-system package inside an image.
     pub path: String,
     pub begin_line: Option<u32>,
     pub end_line: Option<u32>,
     pub begin_column: Option<u32>,
     pub end_column: Option<u32>,
+    /// Container image the finding was found in.
+    ///
+    /// Per-finding rather than per-document because merging two reports must
+    /// not blur which image each finding came from.
+    pub image: Option<String>,
+    /// Operating system of that image, e.g. `debian 12.5`.
+    pub operating_system: Option<String>,
 }
 
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -96,6 +121,8 @@ pub struct Finding {
     pub help: Option<String>,
     pub links: Vec<String>,
     pub identifiers: Vec<Identifier>,
+    /// The affected component, for a finding about a dependency.
+    pub component: Option<Component>,
 }
 
 impl Finding {
@@ -111,6 +138,7 @@ impl Finding {
             help: None,
             links: Vec::new(),
             identifiers: Vec::new(),
+            component: None,
         }
     }
 
@@ -122,11 +150,26 @@ impl Finding {
         if self.fingerprint.is_some() {
             return;
         }
-        self.fingerprint = Some(crate::hash::fingerprint(&[
-            &self.location.path,
-            self.rule_id.as_deref().unwrap_or(""),
-            &self.description,
-        ]));
+        // A finding about a component is identified by the component, not by
+        // where a scanner happened to write it down: the same CVE in the same
+        // package is the same finding whether it was reported against the image
+        // or against the lockfile.
+        self.fingerprint = Some(match &self.component {
+            Some(component) => crate::hash::fingerprint(&[
+                self.location
+                    .image
+                    .as_deref()
+                    .unwrap_or(&self.location.path),
+                &component.name,
+                component.version.as_deref().unwrap_or(""),
+                self.rule_id.as_deref().unwrap_or(&self.description),
+            ]),
+            None => crate::hash::fingerprint(&[
+                &self.location.path,
+                self.rule_id.as_deref().unwrap_or(""),
+                &self.description,
+            ]),
+        });
     }
 }
 
@@ -228,6 +271,32 @@ mod tests {
         a.ensure_fingerprint();
         b.ensure_fingerprint();
         assert_eq!(a.fingerprint, b.fingerprint);
+    }
+
+    #[test]
+    fn a_component_finding_is_identified_by_its_component() {
+        // The same CVE in the same package, reported once against the image and
+        // once against the lockfile, is one finding.
+        let make = |path: &str, version: &str| {
+            let mut finding = Finding::new("openssl is vulnerable", Severity::Critical);
+            finding.rule_id = Some("CVE-2024-1234".into());
+            finding.location = Location {
+                path: path.into(),
+                image: Some("acme/api:1.2.3".into()),
+                ..Default::default()
+            };
+            finding.component = Some(Component {
+                name: "libssl3".into(),
+                version: Some(version.into()),
+                ..Default::default()
+            });
+            finding.ensure_fingerprint();
+            finding.fingerprint.unwrap()
+        };
+
+        assert_eq!(make("", "3.0.11-1"), make("package-lock.json", "3.0.11-1"));
+        // A different version is a different finding: one may be fixed.
+        assert_ne!(make("", "3.0.11-1"), make("", "3.0.11-2"));
     }
 
     #[test]

@@ -1,0 +1,26 @@
+{
+  "SchemaVersion": 2,
+  "CreatedAt": "2026-06-26T13:30:00.000000000Z",
+  "ArtifactName": ".",
+  "ArtifactType": "filesystem",
+  "Results": [
+    {
+      "Target": "go.sum",
+      "Class": "lang-pkgs",
+      "Type": "gomod",
+      "Vulnerabilities": [
+        {
+          "VulnerabilityID": "CVE-2024-9999",
+          "PkgName": "golang.org/x/net",
+          "PkgIdentifier": { "PURL": "pkg:golang/golang.org/x/net@0.17.0" },
+          "InstalledVersion": "0.17.0",
+          "FixedVersion": "0.23.0",
+          "Title": "net/http: denial of service",
+          "Severity": "MEDIUM",
+          "CweIDs": ["CWE-400"],
+          "PrimaryURL": "https://avd.aquasec.com/nvd/cve-2024-9999"
+        }
+      ]
+    }
+  ]
+}

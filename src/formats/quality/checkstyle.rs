@@ -98,7 +98,7 @@ fn finding(element: &quick_xml::events::BytesStart, path: &str) -> Finding {
         begin_line,
         end_line: begin_line,
         begin_column: get_parsed(element, "column"),
-        end_column: None,
+        ..Default::default()
     };
     finding
 }
