@@ -431,7 +431,7 @@ Three constraints in those schemas shape the writers:
 |---|---|---|---|
 | CycloneDX JSON | ✅ | ✅ | 1.4, 1.5, 1.6 — only the versions whose schema is vendored, so everything written is validated |
 | CycloneDX XML | 🔜 | 🔜 | |
-| SPDX JSON | 🔜 | 🔜 | 2.2 / 2.3 |
+| SPDX JSON | ✅ | ✅ | 2.2 / 2.3. Elements are renamed on write: an SPDX id cannot hold a package URL's `:` and `/`, so the relationship graph is rewritten |
 | SPDX tag-value | 💭 | 💭 | |
 | SPDX 3.0 | 💭 | 💭 | deeply reworked model |
 | Syft JSON | 💭 | — | |
@@ -452,7 +452,17 @@ Design notes that were open questions before CycloneDX landed:
   outside the pivot are reported as lost, like everywhere else.
 - **Enum narrowing is mandatory, not optional.** `component.type` gained members in 1.5 and 1.6.
   Writing one into an older document does not degrade that component, it invalidates the whole
-  file — so an unknown kind becomes `library` and the narrowing is reported.
+  file — so an unknown kind becomes `library` and the narrowing is reported. SPDX has the mirror
+  case: `primaryPackagePurpose` only exists from 2.3, and the 2.2 schema forbids unknown
+  properties, so it is omitted there.
+- **A version belongs to a family.** `SbomDoc` records *which format* a version came from, not
+  just the version. `SPDX-2.3` means nothing to a CycloneDX writer, and a bare `spec_version`
+  field would have let one adopt the other's the moment a second SBOM format arrived.
+- **Identities are format-specific.** CycloneDX's `serialNumber` must be a `urn:uuid`; SPDX's
+  `documentNamespace` is any URI. The pivot keeps whichever it was given and each writer checks
+  the shape suits it, rather than assuming. Likewise element ids: an SPDX id cannot hold the `:`
+  and `/` of a package URL, so writing SPDX renames every element and rewrites the graph against
+  the new names.
 
 ### 5.6 Accessibility — `A11yDoc` pivot
 
@@ -570,5 +580,7 @@ read.
    Checkstyle that does not also read a better format.
 5. ✅ **Security** — SARIF and Trivy in; SARIF, GitLab SAST, dependency scanning and container
    scanning out. Grype, OSV and secret detection remain, on demand.
-6. **SBOM** — CycloneDX ↔ SPDX.
+6. ✅ **SBOM** — CycloneDX JSON and SPDX JSON, both ways. CycloneDX XML is the cheap next step
+   (same model, other serialization); SPDX tag-value and SPDX 3.0 remain, the latter as its own
+   format id rather than a version.
 7. **Accessibility, performance** — on demand.

@@ -15,6 +15,8 @@ between two runs.
 | `cobertura-04.dtd`      | Cobertura XML                      | [cobertura/cobertura](https://raw.githubusercontent.com/cobertura/cobertura/master/cobertura/src/site/htdocs/xml/coverage-04.dtd) | ISO 8879 notice: "Permission to copy in any form is granted for use with conforming SGML systems and applications" |
 | `jacoco-report-1.1.dtd` | JaCoCo XML report 1.1              | [jacoco/jacoco](https://raw.githubusercontent.com/jacoco/jacoco/master/org.jacoco.report/src/org/jacoco/report/xml/report.dtd)    | EPL-2.0 (notice kept in the file)                                                                                  |
 | `gitlab-sast-15.2.5.json` | GitLab SAST security report | [security-report-schemas](https://gitlab.com/gitlab-org/security-products/security-report-schemas/-/raw/master/dist/sast-report-format.json) | MIT |
+| `spdx-SPDX-2.2.schema.json`, `-2.3` | SPDX JSON | [spdx/spdx-spec](https://github.com/spdx/spdx-spec) | CC-BY-3.0 |
+| `jsf-0.82.schema.json`, `spdx.schema.json` | referenced by the CycloneDX schemas | [CycloneDX/specification](https://github.com/CycloneDX/specification) | Apache-2.0 |
 | `cyclonedx-1.4.schema.json`, `-1.5`, `-1.6` | CycloneDX JSON | [CycloneDX/specification](https://raw.githubusercontent.com/CycloneDX/specification/master/schema/) | Apache-2.0 |
 
 Files are kept **verbatim**, licence headers included. Update one by

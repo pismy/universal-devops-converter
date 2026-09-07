@@ -214,16 +214,44 @@ pub struct Tool {
     pub vendor: Option<String>,
 }
 
+/// The format family a document came from, and the spec version it declared.
+///
+/// A version only means something inside its family: `SPDX-2.3` is not a
+/// CycloneDX version. Keeping the family alongside the version is what stops a
+/// writer adopting a version from another lineage — which is exactly what a
+/// bare `spec_version` field would have let it do the moment a second SBOM
+/// format arrived.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SpecOrigin {
+    pub family: String,
+    pub version: String,
+}
+
+impl SpecOrigin {
+    pub fn new(family: impl Into<String>, version: impl Into<String>) -> Self {
+        SpecOrigin {
+            family: family.into(),
+            version: version.into(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct SbomDoc {
-    /// Spec version of the *source* document.
+    /// Where the document came from, and in which spec version.
     ///
     /// Carried so that converting a BOM to its own format keeps the version it
     /// arrived as, instead of being silently rewritten to the format's default
-    /// (SPECS.md §3.4, rule 2).
-    pub spec_version: Option<String>,
-    /// `urn:uuid:…` identifying this particular BOM.
-    pub serial_number: Option<String>,
+    /// (SPECS.md §3.4, rule 2). Use [`SbomDoc::version_within`] to read it.
+    pub spec: Option<SpecOrigin>,
+    /// Identity of this particular document, as the source expressed it.
+    ///
+    /// CycloneDX calls it `serialNumber` and requires `urn:uuid:…`; SPDX calls
+    /// it `documentNamespace` and accepts any URI. The pivot keeps whichever it
+    /// was given, so a writer has to check the shape suits its own format
+    /// rather than assuming — a `documentNamespace` is not a valid
+    /// `serialNumber`.
+    pub document_id: Option<String>,
     /// Revision of this serial number, 1 for a first issue.
     pub version: Option<u32>,
     pub timestamp: Option<String>,
@@ -235,11 +263,23 @@ pub struct SbomDoc {
 }
 
 impl SbomDoc {
+    /// The source spec version, but only when the source belongs to `family`.
+    ///
+    /// A CycloneDX writer handed an SPDX document gets `None` and falls back to
+    /// its own default, rather than trying to write a BOM as version
+    /// `SPDX-2.3`.
+    pub fn version_within(&self, family: &str) -> Option<&str> {
+        self.spec
+            .as_ref()
+            .filter(|origin| origin.family == family)
+            .map(|origin| origin.version.as_str())
+    }
+
     /// Fold another BOM in, matching components on their identity so the same
     /// package listed by two scanners is not listed twice.
     pub fn merge(&mut self, other: SbomDoc) {
-        self.spec_version = self.spec_version.take().or(other.spec_version);
-        self.serial_number = self.serial_number.take().or(other.serial_number);
+        self.spec = self.spec.take().or(other.spec);
+        self.document_id = self.document_id.take().or(other.document_id);
         self.version = self.version.or(other.version);
         self.timestamp = self.timestamp.take().or(other.timestamp);
         self.subject = self.subject.take().or(other.subject);
@@ -341,6 +381,17 @@ mod tests {
             ComponentKind::Container.narrow_to("1.4"),
             (ComponentKind::Container, false)
         );
+    }
+
+    #[test]
+    fn a_version_is_only_offered_to_its_own_family() {
+        let doc = SbomDoc {
+            spec: Some(SpecOrigin::new("spdx", "SPDX-2.3")),
+            ..Default::default()
+        };
+        assert_eq!(doc.version_within("spdx"), Some("SPDX-2.3"));
+        // A CycloneDX writer must not adopt an SPDX version.
+        assert_eq!(doc.version_within("cyclonedx"), None);
     }
 
     #[test]

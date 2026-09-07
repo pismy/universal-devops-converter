@@ -149,10 +149,7 @@ fn sniff_json(text: &str) -> Outcome {
         return Some(Ok("cyclonedx-json"));
     }
     if has(r#""spdxVersion""#) || has(r#""SPDXID""#) {
-        return Some(Err(Planned {
-            name: "SPDX JSON",
-            category: "sbom",
-        }));
+        return Some(Ok("spdx-json"));
     }
     if has(r#""runs""#) && (has("sarif") || has(r#""tool""#)) {
         return Some(Ok("sarif"));
@@ -362,9 +359,17 @@ mod tests {
     }
 
     #[test]
+    fn identifies_an_spdx_document() {
+        assert_eq!(
+            id_of(r#"{"spdxVersion":"SPDX-2.3","SPDXID":"SPDXRef-DOCUMENT","name":"acme"}"#),
+            "spdx-json"
+        );
+    }
+
+    #[test]
     fn names_recognized_but_unsupported_formats() {
-        // CycloneDX used to be the example here; SPDX is what is still planned.
-        let error = detect(br#"{"spdxVersion":"SPDX-2.3","name":"acme"}"#, "input").unwrap_err();
+        // SPDX tag-value: recognized by its header, and not implemented.
+        let error = detect(b"SPDXVersion: SPDX-2.3\nDataLicense: CC0-1.0\n", "input").unwrap_err();
         assert!(error.to_string().contains("SPDX"), "{error}");
         assert!(error.to_string().contains("not supported yet"), "{error}");
     }

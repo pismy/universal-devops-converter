@@ -1,0 +1,22 @@
+{
+  "spdxVersion": "SPDX-2.2",
+  "dataLicense": "CC0-1.0",
+  "SPDXID": "SPDXRef-DOCUMENT",
+  "name": "minimal",
+  "documentNamespace": "https://example.test/spdx/minimal",
+  "creationInfo": {
+    "created": "2026-06-26T12:00:00Z",
+    "creators": ["Tool: hand-written"]
+  },
+  "packages": [
+    {
+      "SPDXID": "SPDXRef-Package-only",
+      "name": "only-package",
+      "downloadLocation": "NOASSERTION",
+      "filesAnalyzed": false,
+      "licenseConcluded": "NOASSERTION",
+      "licenseDeclared": "NOASSERTION",
+      "copyrightText": "NOASSERTION"
+    }
+  ]
+}

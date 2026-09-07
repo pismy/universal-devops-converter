@@ -150,6 +150,7 @@ pub fn schema_for(format_id: &str) -> Schema {
         // CycloneDX ships one schema per spec version, and a document says
         // which it claims; validating against the wrong one proves nothing.
         "cyclonedx-json" => Schema::JsonPerVersion("cyclonedx"),
+        "spdx-json" => Schema::JsonPerVersion("spdx"),
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
         "gitlab-sast" => Schema::Json("gitlab-sast-15.2.5.json"),
@@ -202,7 +203,45 @@ pub fn validate(format_id: &str, bytes: &[u8], origin: &str) -> Result<(), Strin
 /// The `specVersion` a JSON document claims, used to pick its schema.
 fn spec_version(bytes: &[u8]) -> Option<String> {
     let value: serde_json::Value = serde_json::from_slice(bytes).ok()?;
-    value.get("specVersion")?.as_str().map(str::to_string)
+    // CycloneDX calls it `specVersion`, SPDX `spdxVersion`.
+    value
+        .get("specVersion")
+        .or_else(|| value.get("spdxVersion"))?
+        .as_str()
+        .map(str::to_string)
+}
+
+/// Resolves the `$ref`s a schema makes to other schemas, from
+/// `tests/schemas/` instead of over the network.
+///
+/// CycloneDX's schema references `jsf-0.82.schema.json` and
+/// `spdx.schema.json` by absolute URL. Fetching those at test time would make
+/// the suite depend on the network and on those files not changing, which is
+/// exactly what vendoring is for — so they are vendored too, and looked up by
+/// file name.
+struct VendoredSchemas;
+
+impl jsonschema::Retrieve for VendoredSchemas {
+    fn retrieve(
+        &self,
+        uri: &jsonschema::Uri<String>,
+    ) -> Result<serde_json::Value, Box<dyn std::error::Error + Send + Sync>> {
+        let name = uri
+            .path()
+            .as_str()
+            .rsplit('/')
+            .next()
+            .ok_or("the reference names no file")?;
+        let path = schemas_dir().join(name);
+        if !path.exists() {
+            return Err(format!(
+                "{uri} is referenced by a vendored schema but {name} is not vendored; \
+                 download it into tests/schemas/ rather than letting the suite reach the network"
+            )
+            .into());
+        }
+        Ok(serde_json::from_slice(&std::fs::read(path)?)?)
+    }
 }
 
 fn validate_json(schema_path: &Path, bytes: &[u8], origin: &str) -> Result<(), String> {
@@ -214,7 +253,9 @@ fn validate_json(schema_path: &Path, bytes: &[u8], origin: &str) -> Result<(), S
     let instance: serde_json::Value =
         serde_json::from_slice(bytes).map_err(|e| format!("{origin} is not valid JSON: {e}"))?;
 
-    let validator = jsonschema::validator_for(&schema)
+    let validator = jsonschema::options()
+        .with_retriever(VendoredSchemas)
+        .build(&schema)
         .map_err(|e| format!("{schema_path:?} is not a usable JSON Schema: {e}"))?;
 
     let problems: Vec<String> = validator

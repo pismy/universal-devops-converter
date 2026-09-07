@@ -38,7 +38,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::error::{Error, Result};
 use crate::model::sbom::{
-    Component, ComponentKind, Dependency, ExternalReference, Hash, License, SbomDoc, Tool,
+    Component, ComponentKind, Dependency, ExternalReference, Hash, License, SbomDoc, SpecOrigin,
+    Tool,
 };
 use crate::registry::Doc;
 use crate::warn::FormatCtx;
@@ -48,6 +49,10 @@ const FORMAT: &str = "cyclonedx-json";
 /// Fallback when neither the caller nor the document says which version to
 /// write. Matches the registry's default.
 const FALLBACK_VERSION: &str = "1.5";
+
+/// Spec lineage. A version is only carried over between documents of the same
+/// family — `SPDX-2.3` is not a CycloneDX version.
+const FAMILY: &str = "cyclonedx";
 
 // ---------------------------------------------------------------------------
 // Reading
@@ -194,8 +199,8 @@ pub fn read(input: &[u8], ctx: &mut FormatCtx) -> Result<Doc> {
         .ok_or_else(|| Error::parse(FORMAT, "no `specVersion`, which CycloneDX requires"))?;
 
     let mut doc = SbomDoc {
-        spec_version: Some(spec_version),
-        serial_number: bom.serial_number,
+        spec: Some(SpecOrigin::new(FAMILY, spec_version)),
+        document_id: bom.serial_number,
         version: bom.version,
         timestamp: bom.metadata.as_ref().and_then(|m| m.timestamp.clone()),
         tools: read_tools(bom.metadata.as_ref().and_then(|m| m.tools.as_ref())),
@@ -472,8 +477,8 @@ pub fn write(doc: &Doc, out: &mut dyn Write, ctx: &mut FormatCtx) -> Result<()> 
     let target = if ctx.version_requested() {
         ctx.version().unwrap_or(FALLBACK_VERSION).to_string()
     } else {
-        doc.spec_version
-            .clone()
+        doc.version_within(FAMILY)
+            .map(str::to_string)
             .unwrap_or_else(|| ctx.version().unwrap_or(FALLBACK_VERSION).to_string())
     };
 
@@ -501,6 +506,17 @@ pub fn write(doc: &Doc, out: &mut dyn Write, ctx: &mut FormatCtx) -> Result<()> 
         );
     }
 
+    // CycloneDX requires `urn:uuid:…`; SPDX's documentNamespace is any URI, so
+    // carrying one straight over would produce a document that validates
+    // nowhere. Omitting it is legal — the field is optional.
+    let serial_number = doc.document_id.as_deref().filter(|id| is_urn_uuid(id));
+    if doc.document_id.is_some() && serial_number.is_none() {
+        ctx.lossy(
+            "cyclonedx-json: the source document's identity is not a `urn:uuid:…` and could not \
+             be carried over as a serial number",
+        );
+    }
+
     let has_metadata = doc.timestamp.is_some() || subject.is_some();
     let metadata = has_metadata.then_some(OutMetadata {
         timestamp: doc.timestamp.as_deref(),
@@ -511,7 +527,7 @@ pub fn write(doc: &Doc, out: &mut dyn Write, ctx: &mut FormatCtx) -> Result<()> 
         schema: format!("http://cyclonedx.org/schema/bom-{target}.schema.json"),
         bom_format: "CycloneDX",
         spec_version: &target,
-        serial_number: doc.serial_number.as_deref(),
+        serial_number,
         version: doc.version.unwrap_or(1),
         metadata,
         components,
@@ -529,6 +545,20 @@ pub fn write(doc: &Doc, out: &mut dyn Write, ctx: &mut FormatCtx) -> Result<()> 
     writeln!(out)?;
     out.flush()?;
     Ok(())
+}
+
+/// `urn:uuid:` followed by a canonical UUID, which is all CycloneDX accepts.
+fn is_urn_uuid(value: &str) -> bool {
+    let Some(rest) = value.strip_prefix("urn:uuid:") else {
+        return false;
+    };
+    let groups: Vec<&str> = rest.split('-').collect();
+    groups.len() == 5
+        && [8, 4, 4, 4, 12] == groups.iter().map(|g| g.len()).collect::<Vec<_>>()[..]
+        && groups.iter().all(|g| {
+            g.chars()
+                .all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase())
+        })
 }
 
 fn write_component<'a>(
@@ -643,7 +673,7 @@ mod tests {
     #[test]
     fn reads_the_document_and_its_components() {
         let (doc, _) = parse(BOM);
-        assert_eq!(doc.spec_version.as_deref(), Some("1.6"));
+        assert_eq!(doc.version_within(FAMILY), Some("1.6"));
         assert_eq!(doc.version, Some(2));
         assert_eq!(doc.subject.as_ref().unwrap().name, "acme/api");
         assert_eq!(doc.components.len(), 3);
@@ -751,9 +781,32 @@ mod tests {
         let (again, _) = parse(&serde_json::to_string(&json).unwrap());
 
         assert_eq!(again.components.len(), doc.components.len());
-        assert_eq!(again.spec_version, doc.spec_version);
-        assert_eq!(again.serial_number, doc.serial_number);
+        assert_eq!(again.spec, doc.spec);
+        assert_eq!(again.document_id, doc.document_id);
         assert_eq!(again.components, doc.components);
+    }
+
+    #[test]
+    fn an_identity_that_is_not_a_urn_uuid_is_dropped_rather_than_emitted() {
+        // SPDX's documentNamespace is any URI; CycloneDX only accepts urn:uuid,
+        // so carrying one straight over would invalidate the document.
+        let doc = SbomDoc {
+            document_id: Some("https://example.test/spdx/minimal".into()),
+            ..Default::default()
+        };
+        let (json, warnings) = render(&doc, Some("1.5"));
+        assert!(json.get("serialNumber").is_none());
+        assert!(warnings.messages().any(|m| m.contains("urn:uuid")));
+
+        let doc = SbomDoc {
+            document_id: Some("urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79".into()),
+            ..Default::default()
+        };
+        let (json, _) = render(&doc, Some("1.5"));
+        assert_eq!(
+            json["serialNumber"],
+            "urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79"
+        );
     }
 
     #[test]

@@ -576,6 +576,32 @@ pub static FORMATS: &[FormatSpec] = &[
         read: Some(formats::sbom::cyclonedx_json::read),
         write: Some(formats::sbom::cyclonedx_json::write),
     },
+    FormatSpec {
+        id: "spdx-json",
+        aliases: &["spdx"],
+        categories: &[Category::Sbom],
+        description: "SPDX JSON bill of materials (2.2 / 2.3)",
+        write_notes: &[
+            (
+                NoteKind::Degraded,
+                "a licence recorded only by name is not a valid SPDX expression and becomes \
+                 NOASSERTION",
+            ),
+            (
+                NoteKind::Degraded,
+                "elements are renamed: an SPDX id cannot hold the `:` and `/` of a package URL, \
+                 so the relationship graph is rewritten against the new names",
+            ),
+            (
+                NoteKind::Lossy,
+                "only DEPENDS_ON survives; SPDX's wider relationship vocabulary has no pivot",
+            ),
+        ],
+        versions: &["2.2", "2.3"],
+        default_version: Some("2.3"),
+        read: Some(formats::sbom::spdx_json::read),
+        write: Some(formats::sbom::spdx_json::write),
+    },
 ];
 
 /// A format plus the spec version to use with it, as named on the command line.
