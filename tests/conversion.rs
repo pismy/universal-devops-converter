@@ -44,12 +44,13 @@ fn render(doc: &Doc, target: &'static FormatSpec) -> Result<Vec<u8>, String> {
     Ok(out)
 }
 
-fn writable_in(
-    category: universal_devops_converter::registry::Category,
-) -> Vec<&'static FormatSpec> {
+/// Every format `source` can legally be converted into: a shared category, and
+/// able to write. A format belonging to several categories reaches the writers
+/// of all of them.
+fn targets_for(source: &'static FormatSpec) -> Vec<&'static FormatSpec> {
     FORMATS
         .iter()
-        .filter(|f| f.category == category && f.write.is_some())
+        .filter(|f| f.write.is_some() && f.shared_category(source).is_some())
         .collect()
 }
 
@@ -65,7 +66,7 @@ fn every_fixture_converts_to_every_format_of_its_category() {
     for fixture in fixtures().iter().filter(|f| !f.must_be_rejected) {
         let doc = parse(fixture);
 
-        for target in writable_in(fixture.format.category) {
+        for target in targets_for(fixture.format) {
             conversions += 1;
             let label = format!("{} -> {}", fixture.label(), target.id);
 
@@ -107,7 +108,7 @@ fn every_written_format_can_be_read_back() {
     for fixture in fixtures().iter().filter(|f| !f.must_be_rejected) {
         let doc = parse(fixture);
 
-        for target in writable_in(fixture.format.category) {
+        for target in targets_for(fixture.format) {
             let Some(reader) = target.read else { continue };
             let label = format!("{} -> {} -> {}", fixture.label(), target.id, target.id);
 
@@ -129,7 +130,7 @@ fn every_written_format_can_be_read_back() {
 #[test]
 fn conversion_is_byte_stable() {
     for fixture in fixtures().iter().filter(|f| !f.must_be_rejected) {
-        for target in writable_in(fixture.format.category) {
+        for target in targets_for(fixture.format) {
             let first = render(&parse(fixture), target);
             let second = render(&parse(fixture), target);
             assert_eq!(

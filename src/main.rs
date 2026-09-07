@@ -6,7 +6,7 @@ use clap::Parser;
 
 use universal_devops_converter::error::{Error, Result};
 use universal_devops_converter::paths::PathMapper;
-use universal_devops_converter::registry::{Category, Doc, FormatSpec, Selection, FORMATS};
+use universal_devops_converter::registry::{Category, Doc, Selection, FORMATS};
 use universal_devops_converter::warn::Warnings;
 use universal_devops_converter::{detect, registry};
 
@@ -82,11 +82,14 @@ fn convert(args: &ConvertArgs, style: Style) -> Result<()> {
                 }
             }
         };
-        if origin.spec.category != target.spec.category {
+        if origin.spec.shared_category(target.spec).is_none() {
             return Err(Error::config(format!(
                 "cannot convert a {} report ('{}') into a {} report ('{}'): \
                  conversion is only defined within a category",
-                origin.spec.category, origin.spec.id, target.spec.category, target.spec.id
+                origin.spec.primary_category(),
+                origin.spec.id,
+                target.spec.primary_category(),
+                target.spec.id
             )));
         }
         log::debug!(
@@ -201,15 +204,17 @@ fn report_warnings(warnings: &Warnings, style: Style) {
 // ---------------------------------------------------------------------------
 
 fn list_formats(args: &FormatsArgs, style: Style) -> Result<()> {
-    let selected: Vec<&FormatSpec> = FORMATS
+    let categories: Vec<Category> = Category::ALL
         .iter()
-        .filter(|f| args.category.is_none_or(|c| f.category == c))
+        .copied()
+        .filter(|c| args.category.is_none_or(|wanted| *c == wanted))
+        .filter(|c| FORMATS.iter().any(|f| f.is_in(*c)))
         .collect();
 
-    if selected.is_empty() {
+    if categories.is_empty() {
         return Err(Error::config(format!(
             "no format in category '{}'",
-            args.category.expect("empty listing implies a filter")
+            args.category.expect("an empty listing implies a filter")
         )));
     }
 
@@ -220,65 +225,79 @@ fn list_formats(args: &FormatsArgs, style: Style) -> Result<()> {
         sep = registry::VERSION_SEPARATOR,
     );
 
-    let width = selected.iter().map(|f| f.id.len()).max().unwrap_or(0);
-    let mut current: Option<Category> = None;
+    let width = FORMATS.iter().map(|f| f.id.len()).max().unwrap_or(0);
 
-    for format in selected {
-        if current != Some(format.category) {
-            if current.is_some() {
-                println!();
-            }
-            println!(
-                "{}",
-                style.paint(BOLD, &format.category.to_string().to_uppercase())
-            );
-            current = Some(format.category);
+    for (index, category) in categories.iter().enumerate() {
+        if index > 0 {
+            println!();
         }
-
-        let capability = format!(
-            "{}{}",
-            if format.read.is_some() { "r" } else { "-" },
-            if format.write.is_some() { "w" } else { "-" }
-        );
         println!(
-            "  {:<width$}  {}  {}",
-            style.paint(CYAN, format.id),
-            capability,
-            format.description,
+            "{}",
+            style.paint(BOLD, &category.to_string().to_uppercase())
         );
-        if let Some(default) = format.default_version {
-            let versions: Vec<String> = format
-                .versions
+
+        for format in FORMATS.iter().filter(|f| f.is_in(*category)) {
+            let capability = format!(
+                "{}{}",
+                if format.read.is_some() { "r" } else { "-" },
+                if format.write.is_some() { "w" } else { "-" }
+            );
+            println!(
+                "  {:<width$}  {}  {}",
+                style.paint(CYAN, format.id),
+                capability,
+                format.description,
+            );
+
+            // A format in several categories is listed under each; say so, so
+            // the repetition reads as deliberate.
+            let others: Vec<&str> = format
+                .categories
                 .iter()
-                .map(|v| {
-                    if *v == default {
-                        format!("{v} (default)")
-                    } else {
-                        (*v).to_string()
-                    }
-                })
+                .filter(|c| *c != category)
+                .map(|c| c.as_str())
                 .collect();
-            println!(
-                "  {:<width$}      versions: {} — pin one with `{}{}<version>`",
-                "",
-                versions.join(", "),
-                format.id,
-                registry::VERSION_SEPARATOR,
-            );
-        }
-        if !format.aliases.is_empty() {
-            println!(
-                "  {:<width$}      aliases: {}",
-                "",
-                format.aliases.join(", ")
-            );
-        }
-        for (kind, note) in format.write_notes {
-            println!(
-                "  {:<width$}      {} {note}",
-                "",
-                style.paint(YELLOW, kind.label())
-            );
+            if !others.is_empty() {
+                println!(
+                    "  {:<width$}      also a {} format",
+                    "",
+                    others.join(" and a ")
+                );
+            }
+            if let Some(default) = format.default_version {
+                let versions: Vec<String> = format
+                    .versions
+                    .iter()
+                    .map(|v| {
+                        if *v == default {
+                            format!("{v} (default)")
+                        } else {
+                            (*v).to_string()
+                        }
+                    })
+                    .collect();
+                println!(
+                    "  {:<width$}      versions: {} — pin one with `{}{}<version>`",
+                    "",
+                    versions.join(", "),
+                    format.id,
+                    registry::VERSION_SEPARATOR,
+                );
+            }
+            if !format.aliases.is_empty() {
+                println!(
+                    "  {:<width$}      aliases: {}",
+                    "",
+                    format.aliases.join(", ")
+                );
+            }
+            for (kind, note) in format.write_notes {
+                println!(
+                    "  {:<width$}      {} {note}",
+                    "",
+                    style.paint(YELLOW, kind.label())
+                );
+            }
         }
     }
     Ok(())

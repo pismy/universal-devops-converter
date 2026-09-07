@@ -231,7 +231,6 @@ fn a_colon_separator_points_at_the_at_sign() {
     let output = run(&["-t", "sarif:2.1.0"], "");
     assert_eq!(output.status.code(), Some(1));
     let stderr = stderr_of(&output);
-    assert!(stderr.contains("reserved"), "{stderr}");
     assert!(stderr.contains("sarif@2.1.0"), "{stderr}");
 }
 
@@ -248,6 +247,18 @@ fn formats_labels_notices_with_the_kind_the_writer_emits() {
         listing.contains("lossy: JaCoCo instruction/complexity/method counters are dropped"),
         "{listing}"
     );
+}
+
+#[test]
+fn a_format_in_two_categories_is_listed_under_each() {
+    let quality = stdout_of(&run(&["formats", "--category", "quality"], ""));
+    let security = stdout_of(&run(&["formats", "--category", "security"], ""));
+
+    // SARIF describes both kinds of finding; the listing says so rather than
+    // pretending it belongs to one.
+    assert!(quality.contains("sarif"), "{quality}");
+    assert!(security.contains("sarif"), "{security}");
+    assert!(quality.contains("also a security format"), "{quality}");
 }
 
 #[test]

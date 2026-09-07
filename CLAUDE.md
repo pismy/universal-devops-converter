@@ -55,10 +55,13 @@ of N², and cross-category conversion is impossible by construction.
   approximated counter). Both go to **stderr** (stdout may carry the report) and
   both count towards `--strict`. When adding a format, populate `write_notes` in
   the registry too — that is what `udc formats` shows.
+- **A format declares a set of categories**, not one. SARIF is both `quality`
+  and `security`, because that is what the format is. A conversion is legal when
+  the two sets intersect (`FormatSpec::shared_category`). Never duplicate a
+  format under two ids to express this.
 - **Versions live on the format id, not in a separate option.**
-  `cyclonedx-json@1.6`. `@` is the separator; **`:` is reserved** for a future
-  category qualifier (`security:sarif` vs `quality:sarif`) and is explicitly
-  rejected with a pointer to `@`. A format that declares no `versions` rejects
+  `cyclonedx-json@1.6`. `@` is the separator, and `format:version` is rejected
+  with a pointer to `@`. A format that declares no `versions` rejects
   the suffix rather than ignoring it. `default_version` is deliberately *not*
   "the newest": pick the version most consumers actually ingest. See SPECS.md
   §3.4 for which formats have real version breaks — SPDX 3.0 and SARIF 1.0 are

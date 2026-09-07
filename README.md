@@ -174,16 +174,14 @@ semgrep --sarif | udc -f sarif@2.1.0 -t codeclimate-gitlab -o gl-code-quality.js
 Without a suffix the format's **default version** is used — deliberately the
 most widely ingested one rather than the newest, because a report the platform
 rejects is worse than one missing a recent field. An unversioned format rejects
-the suffix instead of ignoring it, and `:` is reserved for a future category
-qualifier (`security:sarif` vs `quality:sarif`):
+the suffix instead of ignoring it:
 
 ```console
 $ udc -t junit@1.0
 error: format 'junit' is not versioned: drop the '@1.0' suffix
 
 $ udc -t sarif:2.1.0
-error: 'sarif:2.1.0': ':' is reserved for a future category qualifier.
-       Use 'sarif@2.1.0' to pin a spec version.
+error: 'sarif:2.1.0': use 'sarif@2.1.0' to pin a spec version ('@', not ':').
 ```
 
 Version breaks that are really *model* breaks — SPDX 3.0, SARIF 1.0 — get their
@@ -222,9 +220,10 @@ Today:
 | **Tests**    | JUnit XML                       | JUnit XML                           |
 | **Quality**  | Checkstyle, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 
-Any readable format converts to any writable format **of the same category**.
+Any readable format converts to any writable format **sharing a category**.
 Converting a Checkstyle report into Cobertura is an error, not a best-effort
-guess. Security, SBOM, accessibility and performance are on the roadmap — see
+guess. A format may belong to several categories — SARIF is both a quality and
+a security format, which is why it reaches the writers of both. Security, SBOM, accessibility and performance are on the roadmap — see
 [SPECS.md §5](SPECS.md).
 
 ## In CI

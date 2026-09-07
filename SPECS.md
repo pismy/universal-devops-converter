@@ -171,13 +171,36 @@ The version is declared as a **suffix on the format identifier**, using `@`:
 ```
 
 - `@` rather than `:`: `@` is the ecosystem's "name at version" convention (npm, Go modules,
-  GitHub Actions, Homebrew, purl).
-- **`:` is reserved** for a future category qualifier (`security:sarif` vs `quality:sarif`, SARIF
-  legitimately belonging to both). The tool explicitly rejects `format:version` and points at
-  `@`, rather than accepting it and closing that door.
+  GitHub Actions, Homebrew, purl). `format:version` is rejected with a pointer at `@`, since it
+  is a natural guess.
+
+> An earlier draft reserved `:` for a category qualifier (`security:sarif` vs `quality:sarif`).
+> That turned out to be solving the wrong problem — see §3.5.
 - An unversioned format rejects the suffix instead of ignoring it.
 - With no suffix: the format's `default_version`.
 - `udc formats` shows the supported versions and which one is the default.
+
+### 3.5 A format may belong to several categories
+
+SARIF describes code-quality findings and security findings with the same document shape. That
+is not an ambiguity to be disambiguated, it is what the format *is*, and it is why SARIF is the
+best universal input.
+
+A format therefore declares a **set** of categories, and a conversion is legal when the source's
+set and the target's set intersect:
+
+| Conversion | Categories | Verdict |
+|---|---|---|
+| `checkstyle` → `codeclimate-gitlab` | {quality} ∩ {quality} | allowed |
+| `sarif` → `codeclimate-gitlab` | {quality, security} ∩ {quality} | allowed |
+| `sarif` → `gitlab-security` | {quality, security} ∩ {security} | allowed |
+| `checkstyle` → `gitlab-security` | {quality} ∩ {security} = ∅ | refused |
+| `checkstyle` → `cobertura` | {quality} ∩ {coverage} = ∅ | refused |
+
+The alternative — two registry entries, `quality:sarif` and `security:sarif`, sharing the same
+reader and writer — was rejected. It would duplicate an id, make a bare `-t sarif` ambiguous, and
+require a qualifier syntax, all to express something the format already is. `udc formats` lists
+such a format under each of its categories and says so.
 
 ## 4. CLI contract
 
@@ -319,10 +342,8 @@ Primary sink: **Code Climate JSON**, in its GitLab flavour
 **Highest-ROI conversions: Checkstyle → Code Climate (GitLab)** for GitLab, and
 **Checkstyle → SARIF** for GitHub code scanning — the same need on the other platform.
 
-> **Note on SARIF.** SARIF belongs to this category *and* to §5.4, but the registry
-> allows one entry per id. The writer lives in `quality` for now; the security
-> profile will force the `security:sarif` / `quality:sarif` qualifier that `:` is
-> reserved for (§3.4).
+> **Note on SARIF.** SARIF belongs to this category *and* to §5.4, and declares
+> both (§3.5), so it reaches the writers of either.
 >
 > Rebuilding `tool.driver.rules[]` is the delicate part: the pivot carries rule
 > metadata per finding, so the table is reconstructed by deduplicating on rule id

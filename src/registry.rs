@@ -15,6 +15,12 @@ use crate::paths::PathMapper;
 use crate::warn::{FormatCtx, NoteKind};
 
 /// Report categories. Conversion is only ever defined *within* a category.
+///
+/// A format may belong to several: SARIF is the canonical case, describing
+/// code-quality findings and security findings with the same document shape.
+/// That is modelled as a set on the format rather than as two registry entries,
+/// because it is what the format actually is — duplicating it under two ids
+/// would make `-t sarif` ambiguous for no gain.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, clap::ValueEnum)]
 #[value(rename_all = "lowercase")]
 pub enum Category {
@@ -28,6 +34,17 @@ pub enum Category {
 }
 
 impl Category {
+    /// Every category, in listing order.
+    pub const ALL: &'static [Category] = &[
+        Category::Coverage,
+        Category::Tests,
+        Category::Quality,
+        Category::Security,
+        Category::Sbom,
+        Category::Accessibility,
+        Category::Performance,
+    ];
+
     pub fn as_str(self) -> &'static str {
         match self {
             Category::Coverage => "coverage",
@@ -118,17 +135,15 @@ pub type ReadFn = fn(&[u8], &mut FormatCtx) -> Result<Doc>;
 pub type WriteFn = fn(&Doc, &mut dyn Write, &mut FormatCtx) -> Result<()>;
 
 /// Separator between a format id and a spec version: `cyclonedx-json@1.6`.
-///
-/// `@` rather than `:` on purpose — `:` is reserved for a future category
-/// qualifier (`security:sarif` vs `quality:sarif`, since SARIF legitimately
-/// belongs to both).
 pub const VERSION_SEPARATOR: char = '@';
 
 #[derive(Debug)]
 pub struct FormatSpec {
     pub id: &'static str,
     pub aliases: &'static [&'static str],
-    pub category: Category,
+    /// Every category this format belongs to, most representative first.
+    /// Conversion between two formats is allowed when their sets intersect.
+    pub categories: &'static [Category],
     pub description: &'static str,
     /// Known notices raised when *writing* this format, shown by `udc formats`.
     /// The kind must match what the writer actually emits at runtime, so the
@@ -149,6 +164,27 @@ pub struct FormatSpec {
 }
 
 impl FormatSpec {
+    /// The category a format is listed under first; used in messages.
+    pub fn primary_category(&self) -> Category {
+        *self
+            .categories
+            .first()
+            .expect("every format declares at least one category")
+    }
+
+    pub fn is_in(&self, category: Category) -> bool {
+        self.categories.contains(&category)
+    }
+
+    /// The category two formats have in common, if any. `None` means the
+    /// conversion is undefined, not merely lossy.
+    pub fn shared_category(&self, other: &FormatSpec) -> Option<Category> {
+        self.categories
+            .iter()
+            .copied()
+            .find(|c| other.categories.contains(c))
+    }
+
     pub fn matches(&self, id: &str) -> bool {
         self.id.eq_ignore_ascii_case(id) || self.aliases.iter().any(|a| a.eq_ignore_ascii_case(id))
     }
@@ -178,7 +214,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "lcov",
         aliases: &["lcov-info"],
-        category: Category::Coverage,
+        categories: &[Category::Coverage],
         description: "LCOV tracefile (gcov, nyc/istanbul, cargo-llvm-cov, tarpaulin)",
         write_notes: &[
             (
@@ -198,7 +234,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "cobertura",
         aliases: &["coverage.py"],
-        category: Category::Coverage,
+        categories: &[Category::Coverage],
         description: "Cobertura XML — the coverage format GitLab CI ingests",
         write_notes: &[(
             NoteKind::Lossy,
@@ -212,7 +248,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "jacoco",
         aliases: &[],
-        category: Category::Coverage,
+        categories: &[Category::Coverage],
         description: "JaCoCo XML report",
         write_notes: &[
             (
@@ -233,7 +269,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "junit",
         aliases: &["junit-xml", "surefire"],
-        category: Category::Tests,
+        categories: &[Category::Tests],
         description: "JUnit XML (tolerant reader covering the usual dialects)",
         write_notes: &[],
         versions: &[],
@@ -245,7 +281,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "checkstyle",
         aliases: &[],
-        category: Category::Quality,
+        categories: &[Category::Quality],
         description: "Checkstyle XML (ESLint, PHP_CodeSniffer, golangci-lint, ktlint…)",
         write_notes: &[],
         versions: &[],
@@ -256,7 +292,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "sarif",
         aliases: &["sarif-json"],
-        category: Category::Quality,
+        categories: &[Category::Quality, Category::Security],
         description: "SARIF 2.1.0 (semgrep, CodeQL, gosec, bandit, Checkov…)",
         write_notes: &[
             (
@@ -286,7 +322,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "codeclimate",
         aliases: &["code-climate"],
-        category: Category::Quality,
+        categories: &[Category::Quality],
         description: "Code Climate issue JSON (full specification)",
         write_notes: &[(
             NoteKind::Lossy,
@@ -300,7 +336,7 @@ pub static FORMATS: &[FormatSpec] = &[
     FormatSpec {
         id: "codeclimate-gitlab",
         aliases: &["gitlab-codequality", "codequality"],
-        category: Category::Quality,
+        categories: &[Category::Quality],
         description: "Code Climate JSON, GitLab Code Quality subset",
         write_notes: &[(
             NoteKind::Lossy,
@@ -345,12 +381,12 @@ pub fn find(id: &str) -> Result<&'static FormatSpec> {
 pub fn resolve(selector: &str) -> Result<Selection> {
     let selector = selector.trim();
 
-    // `:` is reserved for a future category qualifier; a user reaching for it
-    // deserves a pointer rather than "unknown format 'sarif:2.1.0'".
+    // Docker-style `format:version` is a natural guess; say so rather than
+    // reporting "unknown format 'sarif:2.1.0'".
     if let Some((id, version)) = selector.split_once(':') {
         return Err(Error::config(format!(
-            "'{selector}': ':' is reserved for a future category qualifier. \
-             Use '{id}{VERSION_SEPARATOR}{version}' to pin a spec version."
+            "'{selector}': use '{id}{VERSION_SEPARATOR}{version}' to pin a spec version \
+             ('{VERSION_SEPARATOR}', not ':')."
         )));
     }
 
@@ -476,10 +512,30 @@ mod tests {
     }
 
     #[test]
-    fn colon_is_reserved_and_points_at_the_at_sign() {
+    fn a_colon_separator_points_at_the_at_sign() {
         let error = resolve("sarif:2.1.0").unwrap_err().to_string();
-        assert!(error.contains("reserved"), "{error}");
         assert!(error.contains("sarif@2.1.0"), "{error}");
+    }
+
+    #[test]
+    fn every_format_declares_at_least_one_category() {
+        for format in FORMATS {
+            assert!(
+                !format.categories.is_empty(),
+                "format '{}' belongs to no category",
+                format.id
+            );
+        }
+    }
+
+    #[test]
+    fn a_shared_category_is_what_makes_a_conversion_legal() {
+        let sarif = find("sarif").unwrap();
+        let checkstyle = find("checkstyle").unwrap();
+        let cobertura = find("cobertura").unwrap();
+
+        assert_eq!(sarif.shared_category(checkstyle), Some(Category::Quality));
+        assert_eq!(checkstyle.shared_category(cobertura), None);
     }
 
     #[test]
