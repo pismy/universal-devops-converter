@@ -577,6 +577,28 @@ pub static FORMATS: &[FormatSpec] = &[
         write: Some(formats::sbom::cyclonedx_json::write),
     },
     FormatSpec {
+        id: "cyclonedx-xml",
+        aliases: &["cdx-xml"],
+        categories: &[Category::Sbom],
+        description: "CycloneDX XML bill of materials",
+        write_notes: &[
+            (
+                NoteKind::Degraded,
+                "a component type the target spec version does not define is written as \
+                 `library`; emitting it would make the whole document invalid",
+            ),
+            (
+                NoteKind::Lossy,
+                "vulnerabilities, services and compositions are not part of the bill-of-materials \
+                 pivot",
+            ),
+        ],
+        versions: &["1.4", "1.5", "1.6"],
+        default_version: Some("1.5"),
+        read: Some(formats::sbom::cyclonedx_xml::read),
+        write: Some(formats::sbom::cyclonedx_xml::write),
+    },
+    FormatSpec {
         id: "spdx-json",
         aliases: &["spdx"],
         categories: &[Category::Sbom],

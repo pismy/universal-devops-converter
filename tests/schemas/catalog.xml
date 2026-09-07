@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  XML catalog for the vendored XSDs.
+
+  CycloneDX's schema imports `http://cyclonedx.org/schema/spdx` by absolute URL.
+  Resolving that at test time would put the network in the path of validation,
+  which is what vendoring is meant to avoid — and rewriting the import inside the
+  vendored file would break the rule that upstream schemas are kept verbatim.
+  A catalog redirects the URL to the local copy instead, leaving both intact.
+
+  Used by `tests/support/mod.rs`, which points XML_CATALOG_FILES at this file.
+-->
+<catalog xmlns="urn:oasis:names:tc:entity:xmlns:xml:catalog">
+  <uri name="http://cyclonedx.org/schema/spdx" uri="spdx.xsd"/>
+  <system systemId="http://cyclonedx.org/schema/spdx" uri="spdx.xsd"/>
+</catalog>

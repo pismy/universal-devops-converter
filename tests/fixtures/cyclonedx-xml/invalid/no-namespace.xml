@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom version="1">
+  <components>
+    <component type="library"><name>the spec version lives in the namespace</name></component>
+  </components>
+</bom>

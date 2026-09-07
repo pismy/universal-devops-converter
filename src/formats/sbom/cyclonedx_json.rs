@@ -304,12 +304,7 @@ fn read_component(raw: &RawComponent) -> Component {
     component.hashes = raw
         .hashes
         .iter()
-        .filter_map(|hash| {
-            Some(Hash {
-                algorithm: hash.alg.clone()?,
-                value: hash.content.clone()?,
-            })
-        })
+        .filter_map(|hash| Some(Hash::new(hash.alg.as_deref()?, hash.content.clone()?)))
         .collect();
 
     component.external_references = raw
@@ -493,6 +488,19 @@ pub fn write(doc: &Doc, out: &mut dyn Write, ctx: &mut FormatCtx) -> Result<()> 
         .as_ref()
         .map(|component| write_component(component, &target, &mut narrowed));
 
+    if doc
+        .components
+        .iter()
+        .chain(doc.subject.iter())
+        .flat_map(|c| &c.hashes)
+        .any(|hash| !hash_is_writable(&hash.algorithm))
+    {
+        ctx.lossy(
+            "cyclonedx-json: hashes using an algorithm CycloneDX does not define (SPDX allows \
+             MD2, MD6, SHA-224 and ADLER32) were dropped; emitting one would make the whole \
+             document invalid",
+        );
+    }
     for kind in &narrowed {
         ctx.degraded(format!(
             "cyclonedx-json: `{kind}` is not a component type in {target}, so it was written as \
@@ -561,6 +569,28 @@ fn is_urn_uuid(value: &str) -> bool {
         })
 }
 
+/// The hash algorithms CycloneDX accepts. SPDX's list is wider — MD2, MD6,
+/// SHA-224 and ADLER32 have no CycloneDX equivalent — and an algorithm outside
+/// this set invalidates the whole document, not just the one hash.
+const KNOWN_HASH_ALGORITHMS: &[&str] = &[
+    "MD5",
+    "SHA-1",
+    "SHA-256",
+    "SHA-384",
+    "SHA-512",
+    "SHA3-256",
+    "SHA3-384",
+    "SHA3-512",
+    "BLAKE2b-256",
+    "BLAKE2b-384",
+    "BLAKE2b-512",
+    "BLAKE3",
+];
+
+fn hash_is_writable(algorithm: &str) -> bool {
+    KNOWN_HASH_ALGORITHMS.contains(&algorithm)
+}
+
 fn write_component<'a>(
     component: &'a Component,
     target: &str,
@@ -607,6 +637,7 @@ fn write_component<'a>(
         hashes: component
             .hashes
             .iter()
+            .filter(|hash| hash_is_writable(&hash.algorithm))
             .map(|hash| OutHash {
                 alg: &hash.algorithm,
                 content: &hash.value,

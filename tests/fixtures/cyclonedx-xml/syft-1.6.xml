@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bom xmlns="http://cyclonedx.org/schema/bom/1.6" serialNumber="urn:uuid:3e671687-395b-41f5-a30f-a58921a69b79" version="1">
+  <metadata>
+    <timestamp>2026-06-26T12:00:00Z</timestamp>
+    <component type="application" bom-ref="acme-api">
+      <name>acme/api</name>
+      <version>1.2.3</version>
+    </component>
+  </metadata>
+  <components>
+    <component type="library" bom-ref="pkg:npm/lodash@4.17.21">
+      <supplier>
+        <name>OpenJS Foundation</name>
+      </supplier>
+      <name>lodash</name>
+      <version>4.17.21</version>
+      <description>Lodash modular utilities.</description>
+      <scope>required</scope>
+      <hashes>
+        <hash alg="SHA-256">0d2c1e6d0b1a1c9f4d5e6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3c4d5e6f70819</hash>
+      </hashes>
+      <licenses>
+        <license>
+          <id>MIT</id>
+        </license>
+      </licenses>
+      <purl>pkg:npm/lodash@4.17.21</purl>
+      <externalReferences>
+        <reference type="website">
+          <url>https://lodash.com</url>
+        </reference>
+      </externalReferences>
+    </component>
+    <component type="library" bom-ref="pkg:deb/debian/libssl3@3.0.11-1">
+      <group>debian</group>
+      <name>libssl3</name>
+      <version>3.0.11-1</version>
+      <licenses>
+        <expression>Apache-2.0 OR MIT</expression>
+      </licenses>
+      <cpe>cpe:2.3:a:openssl:openssl:3.0.11:*:*:*:*:*:*:*</cpe>
+      <purl>pkg:deb/debian/libssl3@3.0.11-1</purl>
+    </component>
+    <component type="cryptographic-asset" bom-ref="tls-keypair">
+      <name>server-tls-keypair</name>
+      <version>1</version>
+    </component>
+  </components>
+  <dependencies>
+    <dependency ref="acme-api">
+      <dependency ref="pkg:npm/lodash@4.17.21"/>
+      <dependency ref="pkg:deb/debian/libssl3@3.0.11-1"/>
+    </dependency>
+    <dependency ref="pkg:npm/lodash@4.17.21"/>
+  </dependencies>
+</bom>

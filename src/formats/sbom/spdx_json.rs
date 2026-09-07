@@ -314,10 +314,10 @@ fn read_package(raw: &RawPackage, named_only: &mut usize) -> Component {
         .checksums
         .iter()
         .filter_map(|checksum| {
-            Some(Hash {
-                algorithm: checksum.algorithm.clone()?,
-                value: checksum.value.clone()?,
-            })
+            Some(Hash::new(
+                checksum.algorithm.as_deref()?,
+                checksum.value.clone()?,
+            ))
         })
         .collect();
 
@@ -841,7 +841,22 @@ mod tests {
         assert_eq!(lodash.purl.as_deref(), Some("pkg:npm/lodash@4.17.21"));
         assert_eq!(lodash.supplier.as_deref(), Some("OpenJS Foundation"));
         assert_eq!(lodash.licenses, vec![License::Id("MIT".into())]);
-        assert_eq!(lodash.hashes[0].algorithm, "SHA256");
+        // SPDX writes SHA256; the pivot canonicalizes to CycloneDX's spelling
+        // so a conversion in either direction produces a valid document.
+        assert_eq!(lodash.hashes[0].algorithm, "SHA-256");
+    }
+
+    #[test]
+    fn spdx_spelling_is_restored_on_the_way_out() {
+        let (doc, _) = parse(DOCUMENT);
+        let (json, _) = render(&doc, None);
+        let lodash = json["packages"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|p| p["name"] == "lodash")
+            .unwrap();
+        assert_eq!(lodash["checksums"][0]["algorithm"], "SHA256");
     }
 
     #[test]

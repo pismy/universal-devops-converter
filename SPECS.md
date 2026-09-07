@@ -430,7 +430,7 @@ Three constraints in those schemas shape the writers:
 | Format | Read | Write | Notes |
 |---|---|---|---|
 | CycloneDX JSON | ✅ | ✅ | 1.4, 1.5, 1.6 — only the versions whose schema is vendored, so everything written is validated |
-| CycloneDX XML | 🔜 | 🔜 | |
+| CycloneDX XML | ✅ | ✅ | 1.4, 1.5, 1.6. Same model and pivot as the JSON serialization; the spec version lives in the namespace |
 | SPDX JSON | ✅ | ✅ | 2.2 / 2.3. Elements are renamed on write: an SPDX id cannot hold a package URL's `:` and `/`, so the relationship graph is rewritten |
 | SPDX tag-value | 💭 | 💭 | |
 | SPDX 3.0 | 💭 | 💭 | deeply reworked model |
@@ -458,6 +458,12 @@ Design notes that were open questions before CycloneDX landed:
 - **A version belongs to a family.** `SbomDoc` records *which format* a version came from, not
   just the version. `SPDX-2.3` means nothing to a CycloneDX writer, and a bare `spec_version`
   field would have let one adopt the other's the moment a second SBOM format arrived.
+- **Vocabularies must be canonicalized in the pivot, not at each boundary.** SPDX writes a hash
+  algorithm as `SHA256`, CycloneDX requires `SHA-256`. A pivot storing "whatever the source said"
+  made every SPDX → CycloneDX conversion emit a document that fails its own schema — found by the
+  conversion matrix. The pivot now holds one spelling and each writer renders its own; where a
+  target has no equivalent at all (CycloneDX defines no MD2, MD6, SHA-224 or ADLER32), the hash
+  is dropped and reported.
 - **Identities are format-specific.** CycloneDX's `serialNumber` must be a `urn:uuid`; SPDX's
   `documentNamespace` is any URI. The pivot keeps whichever it was given and each writer checks
   the shape suits it, rather than assuming. Likewise element ids: an SPDX id cannot hold the `:`
@@ -580,7 +586,6 @@ read.
    Checkstyle that does not also read a better format.
 5. ✅ **Security** — SARIF and Trivy in; SARIF, GitLab SAST, dependency scanning and container
    scanning out. Grype, OSV and secret detection remain, on demand.
-6. ✅ **SBOM** — CycloneDX JSON and SPDX JSON, both ways. CycloneDX XML is the cheap next step
-   (same model, other serialization); SPDX tag-value and SPDX 3.0 remain, the latter as its own
-   format id rather than a version.
+6. ✅ **SBOM** — CycloneDX JSON, CycloneDX XML and SPDX JSON, all readable and writable. SPDX
+   tag-value and SPDX 3.0 remain, the latter as its own format id rather than a version.
 7. **Accessibility, performance** — on demand.

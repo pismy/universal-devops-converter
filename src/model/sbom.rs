@@ -139,9 +139,43 @@ pub enum License {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Hash {
-    /// `SHA-256`, `MD5`… as the source spelled it.
+    /// Algorithm name, canonicalized on the way in.
+    ///
+    /// The formats disagree on spelling — SPDX writes `SHA256`, CycloneDX
+    /// requires `SHA-256` — so keeping "whatever the source said" would make
+    /// every SPDX → CycloneDX conversion produce a document that fails its own
+    /// schema. One spelling in the pivot, and each writer renders its own.
     pub algorithm: String,
     pub value: String,
+}
+
+impl Hash {
+    /// The canonical spelling: hyphenated, as CycloneDX writes it.
+    pub fn canonical_algorithm(raw: &str) -> String {
+        let upper = raw.trim().to_ascii_uppercase();
+        match upper.as_str() {
+            "SHA1" => "SHA-1".into(),
+            "SHA224" => "SHA-224".into(),
+            "SHA256" => "SHA-256".into(),
+            "SHA384" => "SHA-384".into(),
+            "SHA512" => "SHA-512".into(),
+            "SHA3256" => "SHA3-256".into(),
+            "SHA3384" => "SHA3-384".into(),
+            "SHA3512" => "SHA3-512".into(),
+            // BLAKE keeps a lowercase `b`, which uppercasing would eat.
+            "BLAKE2B-256" | "BLAKE2B256" => "BLAKE2b-256".into(),
+            "BLAKE2B-384" | "BLAKE2B384" => "BLAKE2b-384".into(),
+            "BLAKE2B-512" | "BLAKE2B512" => "BLAKE2b-512".into(),
+            _ => upper,
+        }
+    }
+
+    pub fn new(algorithm: &str, value: impl Into<String>) -> Self {
+        Hash {
+            algorithm: Hash::canonical_algorithm(algorithm),
+            value: value.into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -392,6 +426,17 @@ mod tests {
         assert_eq!(doc.version_within("spdx"), Some("SPDX-2.3"));
         // A CycloneDX writer must not adopt an SPDX version.
         assert_eq!(doc.version_within("cyclonedx"), None);
+    }
+
+    #[test]
+    fn hash_algorithms_are_canonicalized_on_the_way_in() {
+        // SPDX writes SHA256, CycloneDX requires SHA-256; without a single
+        // spelling, SPDX -> CycloneDX emits a document that fails its schema.
+        assert_eq!(Hash::canonical_algorithm("SHA256"), "SHA-256");
+        assert_eq!(Hash::canonical_algorithm("SHA-256"), "SHA-256");
+        assert_eq!(Hash::canonical_algorithm("sha1"), "SHA-1");
+        assert_eq!(Hash::canonical_algorithm("BLAKE2b-256"), "BLAKE2b-256");
+        assert_eq!(Hash::canonical_algorithm("MD5"), "MD5");
     }
 
     #[test]

@@ -128,6 +128,8 @@ pub enum Schema {
     /// `specVersion`. The prefix names the file family,
     /// e.g. `cyclonedx` for `cyclonedx-1.6.schema.json`.
     JsonPerVersion(&'static str),
+    /// One XML Schema per spec version, selected from the document's namespace.
+    XsdPerVersion(&'static str),
     /// No schema exists for this format; the reason is worth stating.
     None(&'static str),
 }
@@ -151,6 +153,7 @@ pub fn schema_for(format_id: &str) -> Schema {
         // which it claims; validating against the wrong one proves nothing.
         "cyclonedx-json" => Schema::JsonPerVersion("cyclonedx"),
         "spdx-json" => Schema::JsonPerVersion("spdx"),
+        "cyclonedx-xml" => Schema::XsdPerVersion("cyclonedx"),
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
         "gitlab-sast" => Schema::Json("gitlab-sast-15.2.5.json"),
@@ -180,6 +183,21 @@ pub fn validate(format_id: &str, bytes: &[u8], origin: &str) -> Result<(), Strin
     match schema_for(format_id) {
         Schema::None(_) => Ok(()),
         Schema::Json(file) => validate_json(&schemas_dir().join(file), bytes, origin),
+        Schema::XsdPerVersion(family) => {
+            // The spec version is in the namespace, which is the only place an
+            // XML CycloneDX document states it.
+            let version = xml_namespace_version(bytes).ok_or_else(|| {
+                format!("{origin} declares no CycloneDX namespace, so no schema could be chosen")
+            })?;
+            let file = format!("{family}-{version}.xsd");
+            let path = schemas_dir().join(&file);
+            if !path.exists() {
+                return Err(format!(
+                    "{origin} declares namespace version {version}, but {file} is not vendored"
+                ));
+            }
+            validate_xml(&["--schema"], &path, bytes, origin)
+        }
         Schema::JsonPerVersion(family) => {
             let version = spec_version(bytes).ok_or_else(|| {
                 format!("{origin} declares no `specVersion`, so no schema could be chosen")
@@ -198,6 +216,18 @@ pub fn validate(format_id: &str, bytes: &[u8], origin: &str) -> Result<(), Strin
             validate_xml(&["--dtdvalid"], &schemas_dir().join(file), bytes, origin)
         }
     }
+}
+
+/// The spec version out of a CycloneDX XML namespace declaration.
+fn xml_namespace_version(bytes: &[u8]) -> Option<String> {
+    let text = String::from_utf8_lossy(&bytes[..bytes.len().min(4096)]);
+    let marker = "http://cyclonedx.org/schema/bom/";
+    let start = text.find(marker)? + marker.len();
+    let version: String = text[start..]
+        .chars()
+        .take_while(|c| c.is_ascii_digit() || *c == '.')
+        .collect();
+    (!version.is_empty()).then_some(version)
 }
 
 /// The `specVersion` a JSON document claims, used to pick its schema.
@@ -316,6 +346,10 @@ fn validate_xml(
     std::fs::write(&temp, bytes).map_err(|e| format!("cannot write {temp:?}: {e}"))?;
 
     let output = Command::new("xmllint")
+        // CycloneDX's XSD imports another schema by absolute URL; the catalog
+        // redirects it to the vendored copy so validation never touches the
+        // network. See tests/schemas/catalog.xml.
+        .env("XML_CATALOG_FILES", schemas_dir().join("catalog.xml"))
         .arg("--noout")
         // Never fetch the DOCTYPE's SYSTEM id: validation must use the vendored
         // schema, and the suite must not touch the network.

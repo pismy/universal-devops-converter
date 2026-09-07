@@ -17,10 +17,17 @@ between two runs.
 | `gitlab-sast-15.2.5.json` | GitLab SAST security report | [security-report-schemas](https://gitlab.com/gitlab-org/security-products/security-report-schemas/-/raw/master/dist/sast-report-format.json) | MIT |
 | `spdx-SPDX-2.2.schema.json`, `-2.3` | SPDX JSON | [spdx/spdx-spec](https://github.com/spdx/spdx-spec) | CC-BY-3.0 |
 | `jsf-0.82.schema.json`, `spdx.schema.json` | referenced by the CycloneDX schemas | [CycloneDX/specification](https://github.com/CycloneDX/specification) | Apache-2.0 |
+| `cyclonedx-1.4.xsd`, `-1.5`, `-1.6`, `spdx.xsd` | CycloneDX XML | [CycloneDX/specification](https://github.com/CycloneDX/specification) | Apache-2.0 |
 | `cyclonedx-1.4.schema.json`, `-1.5`, `-1.6` | CycloneDX JSON | [CycloneDX/specification](https://raw.githubusercontent.com/CycloneDX/specification/master/schema/) | Apache-2.0 |
 
 Files are kept **verbatim**, licence headers included. Update one by
 re-downloading from the source above and re-running `cargo test`.
+
+`catalog.xml` is an XML catalog, not a schema: CycloneDX's XSD imports another
+schema by absolute URL, and the catalog redirects that to the vendored copy so
+validation never reaches the network. Rewriting the import inside the vendored
+file would have worked too, but would break the rule that upstream schemas are
+kept verbatim.
 
 ## Schemas written by this project
 

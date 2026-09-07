@@ -61,10 +61,7 @@ fn sniff_xml(text: &str) -> Outcome {
         "report" => Some(Ok("jacoco")),
         "testsuite" | "testsuites" => Some(Ok("junit")),
         "checkstyle" => Some(Ok("checkstyle")),
-        "bom" => Some(Err(Planned {
-            name: "CycloneDX XML",
-            category: "sbom",
-        })),
+        "bom" => Some(Ok("cyclonedx-xml")),
         "pmd" => Some(Err(Planned {
             name: "PMD XML",
             category: "quality",
@@ -262,6 +259,14 @@ mod tests {
     fn handles_a_doctype_with_an_internal_subset() {
         let input = "<!DOCTYPE report [ <!ENTITY x \"y\"> ]>\n<report/>";
         assert_eq!(id_of(input), "jacoco");
+    }
+
+    #[test]
+    fn identifies_cyclonedx_xml_by_its_root() {
+        assert_eq!(
+            id_of(r#"<bom xmlns="http://cyclonedx.org/schema/bom/1.6" version="1"/>"#),
+            "cyclonedx-xml"
+        );
     }
 
     #[test]
