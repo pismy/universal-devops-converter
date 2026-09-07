@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<coverage generated="1719410000" clover="3.2.0">
+  <project timestamp="1719410000" name="All files">
+    <package name="App">
+      <file name="/home/runner/work/acme/acme/src/App/Main.php">
+        <class name="Main" namespace="App">
+          <metrics complexity="3" methods="2" coveredmethods="1" conditionals="2" coveredconditionals="1" statements="4" coveredstatements="3" elements="8" coveredelements="5"/>
+        </class>
+        <line num="12" type="method" name="run" visibility="public" complexity="2" crap="2" count="4"/>
+        <line num="14" type="stmt" count="4"/>
+        <line num="16" type="cond" truecount="1" falsecount="0"/>
+        <line num="20" type="method" name="reset" visibility="private" complexity="1" crap="1" count="0"/>
+        <line num="21" type="stmt" count="0"/>
+        <metrics loc="24" ncloc="20" classes="1" methods="2" coveredmethods="1" conditionals="2" coveredconditionals="1" statements="2" coveredstatements="1" elements="6" coveredelements="3"/>
+      </file>
+    </package>
+    <metrics files="1" loc="24" ncloc="20" classes="1" methods="2" coveredmethods="1" conditionals="2" coveredconditionals="1" statements="2" coveredstatements="1" elements="6" coveredelements="3"/>
+  </project>
+</coverage>

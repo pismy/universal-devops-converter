@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Clover XML — written by this project.
+
+  OpenClover ships a schema inside its distribution, but none is published at a
+  stable URL that a test suite can vendor from (the Atlassian and OpenClover
+  repositories both 404). This describes the shape PHPUnit's
+  clover coverage output and Jest's `clover` reporter actually emit, which is the
+  contract that matters here.
+
+  Deliberately permissive where producers disagree — `<file>` sits under a
+  `<package>` in PHPUnit and directly under `<project>` in some Jest versions,
+  and `<metrics>` carries a different attribute set at each level — and strict
+  where a mistake would be silent: the nesting, and the numeric types.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+  <xs:element name="coverage">
+    <xs:complexType>
+      <xs:sequence>
+        <xs:element name="project" type="project" minOccurs="0" maxOccurs="unbounded"/>
+        <xs:element name="testproject" type="project" minOccurs="0" maxOccurs="unbounded"/>
+      </xs:sequence>
+      <xs:attribute name="generated" type="xs:long"/>
+      <!-- The discriminator against Cobertura, which shares this root name. -->
+      <xs:attribute name="clover" type="xs:string"/>
+    </xs:complexType>
+  </xs:element>
+
+  <xs:complexType name="project">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="package" type="package"/>
+      <xs:element name="file" type="file"/>
+      <xs:element name="metrics" type="metrics"/>
+    </xs:choice>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="timestamp" type="xs:long"/>
+  </xs:complexType>
+
+  <xs:complexType name="package">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="file" type="file"/>
+      <xs:element name="metrics" type="metrics"/>
+    </xs:choice>
+    <xs:attribute name="name" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="file">
+    <xs:choice minOccurs="0" maxOccurs="unbounded">
+      <xs:element name="class" type="class"/>
+      <xs:element name="line" type="line"/>
+      <xs:element name="metrics" type="metrics"/>
+    </xs:choice>
+    <!-- PHPUnit puts the full path in `name`; Jest puts the basename in `name`
+         and the path in `path`. Both are optional here, but a file with
+         neither cannot be located and the reader rejects it. -->
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="path" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="class">
+    <xs:sequence>
+      <xs:element name="metrics" type="metrics" minOccurs="0"/>
+    </xs:sequence>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="namespace" type="xs:string"/>
+  </xs:complexType>
+
+  <xs:complexType name="line">
+    <xs:attribute name="num" type="xs:positiveInteger" use="required"/>
+    <xs:attribute name="type" use="required">
+      <xs:simpleType>
+        <xs:restriction base="xs:string">
+          <xs:enumeration value="stmt"/>
+          <xs:enumeration value="cond"/>
+          <xs:enumeration value="method"/>
+        </xs:restriction>
+      </xs:simpleType>
+    </xs:attribute>
+    <xs:attribute name="count" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="truecount" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="falsecount" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="name" type="xs:string"/>
+    <xs:attribute name="signature" type="xs:string"/>
+    <xs:attribute name="visibility" type="xs:string"/>
+    <xs:attribute name="complexity" type="xs:decimal"/>
+    <xs:attribute name="crap" type="xs:decimal"/>
+    <xs:attribute name="testduration" type="xs:decimal"/>
+    <xs:attribute name="testsuccess" type="xs:boolean"/>
+  </xs:complexType>
+
+  <xs:complexType name="metrics">
+    <xs:attribute name="files" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="loc" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="ncloc" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="classes" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="methods" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="coveredmethods" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="conditionals" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="coveredconditionals" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="statements" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="coveredstatements" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="elements" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="coveredelements" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="complexity" type="xs:decimal"/>
+    <xs:attribute name="packages" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="testduration" type="xs:decimal"/>
+    <xs:attribute name="tests" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="testfailures" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="testerrors" type="xs:nonNegativeInteger"/>
+    <xs:attribute name="testpasses" type="xs:nonNegativeInteger"/>
+  </xs:complexType>
+
+</xs:schema>

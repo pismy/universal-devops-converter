@@ -135,6 +135,7 @@ pub enum Schema {
 /// validation. See `tests/schemas/README.md` for provenance.
 pub fn schema_for(format_id: &str) -> Schema {
     match format_id {
+        "clover" => Schema::Xsd("clover.xsd"),
         "cobertura" => Schema::Dtd("cobertura-04.dtd"),
         "jacoco" => Schema::Dtd("jacoco-report-1.1.dtd"),
         "junit" => Schema::Xsd("junit.xsd"),

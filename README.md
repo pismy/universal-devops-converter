@@ -121,6 +121,9 @@ udc -i lcov.info -t cobertura -o coverage.xml --source-root "$PWD"
 # JaCoCo → Cobertura, straight from a pipe
 cat build/reports/jacoco.xml | udc -f jacoco -t cobertura -o coverage.xml
 
+# PHPUnit's Clover report → Cobertura
+udc -i build/logs/clover.xml -t cobertura -o coverage.xml --source-root "$PWD"
+
 # Any linter with a Checkstyle reporter → GitLab Code Quality
 eslint -f checkstyle . | udc -f checkstyle -t codeclimate-gitlab -o gl-code-quality.json
 
@@ -219,7 +222,7 @@ Today:
 
 | Category     | Read                            | Write                               |
 | ------------ | ------------------------------- | ----------------------------------- |
-| **Coverage** | LCOV, Cobertura, JaCoCo         | LCOV, Cobertura, JaCoCo             |
+| **Coverage** | LCOV, Clover, Cobertura, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
 | **Tests**    | JUnit XML                       | JUnit XML                           |
 | **Quality**  | Checkstyle, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF                           | SARIF, GitLab SAST                         |

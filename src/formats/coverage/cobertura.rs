@@ -57,6 +57,15 @@ pub fn read(input: &[u8], _ctx: &mut FormatCtx) -> Result<Doc> {
             Event::Start(ref element) => match local_name(element).as_str() {
                 "coverage" => {
                     saw_root = true;
+                    // Clover roots at <coverage> too, and would otherwise parse
+                    // to an empty report rather than an error.
+                    if get_attr(element, "clover").is_some() {
+                        return Err(Error::parse(
+                            FORMAT,
+                            "this is a Clover report, not a Cobertura one (the root carries a \
+                             `clover` attribute)",
+                        ));
+                    }
                     doc.timestamp = get_parsed(element, "timestamp");
                 }
                 "source" => in_source = true,

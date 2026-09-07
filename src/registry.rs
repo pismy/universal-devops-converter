@@ -232,6 +232,27 @@ pub static FORMATS: &[FormatSpec] = &[
         write: Some(formats::coverage::lcov::write),
     },
     FormatSpec {
+        id: "clover",
+        aliases: &[],
+        categories: &[Category::Coverage],
+        description: "Clover XML (PHPUnit --coverage-clover, Jest's clover reporter)",
+        write_notes: &[
+            (
+                NoteKind::Degraded,
+                "a conditional line has exactly two outcomes; branches beyond the second are \
+                 folded into them",
+            ),
+            (
+                NoteKind::Lossy,
+                "JaCoCo instruction/complexity/method counters are dropped",
+            ),
+        ],
+        versions: &[],
+        default_version: None,
+        read: Some(formats::coverage::clover::read),
+        write: Some(formats::coverage::clover::write),
+    },
+    FormatSpec {
         id: "cobertura",
         aliases: &["coverage.py"],
         categories: &[Category::Coverage],

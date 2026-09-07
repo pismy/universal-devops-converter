@@ -289,7 +289,7 @@ GitLab 17).
 | LCOV | ✅ | ✅ | gcov, lcov, nyc/istanbul, `cargo llvm-cov`, tarpaulin, Swift |
 | Cobertura | ✅ | ✅ | includes the `coverage.py` dialect |
 | JaCoCo | ✅ | ✅ | no *hit* counter: covered = 1, uncovered = 0 |
-| Clover | 🔜 | 🔜 | PHPUnit, Jest |
+| Clover | ✅ | ✅ | PHPUnit, Jest. Roots at `<coverage>` like Cobertura — see below |
 | Istanbul JSON | 🔜 | — | `nyc` / `coverage-final.json` |
 | Go `-coverprofile` | 🔜 | — | `go test`'s native format |
 | OpenCover / dotCover | 💭 | — | .NET |
@@ -297,6 +297,14 @@ GitLab 17).
 | SimpleCov JSON | 💭 | — | Ruby |
 
 **Highest-ROI conversion of the project: LCOV → Cobertura.**
+
+> **Clover and Cobertura share a root element.** Both documents start with
+> `<coverage>`, and nothing else about the opening tag is common: Clover carries
+> `clover` and `generated`, Cobertura carries `line-rate`. Detection keys on that,
+> and each reader rejects the other's document outright — because the failure mode
+> is silent. A Clover file read as Cobertura contains no `<class>` element, so it
+> parses into an empty report and exits 0, handing the platform a file that says
+> nobody covered anything.
 
 ### 5.2 Tests — `TestReport` pivot
 

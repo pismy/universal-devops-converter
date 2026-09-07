@@ -51,8 +51,12 @@ pub fn detect(input: &[u8], origin: &str) -> Result<&'static FormatSpec> {
 type Outcome = Option<std::result::Result<&'static str, Planned>>;
 
 fn sniff_xml(text: &str) -> Outcome {
-    let root = xml_root_element(text)?;
+    let (root, attributes) = xml_root_tag(text)?;
     match root.as_str() {
+        // Cobertura and Clover both root at <coverage>; only the attributes
+        // tell them apart. Getting this wrong is silent: a Clover file read as
+        // Cobertura yields an empty report and exit 0.
+        "coverage" if attributes.contains("clover=") => Some(Ok("clover")),
         "coverage" => Some(Ok("cobertura")),
         "report" => Some(Ok("jacoco")),
         "testsuite" | "testsuites" => Some(Ok("junit")),
@@ -81,9 +85,13 @@ fn sniff_xml(text: &str) -> Outcome {
     }
 }
 
-/// First real element name, skipping the declaration, comments and the doctype.
-/// Namespace prefixes are stripped so `<ns:coverage>` still resolves.
-fn xml_root_element(text: &str) -> Option<String> {
+/// First real element, skipping the declaration, comments and the doctype,
+/// returned as its local name plus the raw attribute text. Namespace prefixes
+/// are stripped so `<ns:coverage>` still resolves.
+///
+/// The attributes are part of the answer because two formats can share a root
+/// element name — see the `<coverage>` case in [`sniff_xml`].
+fn xml_root_tag(text: &str) -> Option<(String, String)> {
     let bytes = text.as_bytes();
     let mut index = 0;
 
@@ -111,7 +119,14 @@ fn xml_root_element(text: &str) -> Option<String> {
                 .take_while(|c| !c.is_whitespace() && *c != '>' && *c != '/')
                 .collect();
             let local = name.rsplit(':').next().unwrap_or(&name);
-            return (!local.is_empty()).then(|| local.to_string());
+            if local.is_empty() {
+                return None;
+            }
+            let attributes: String = rest[name.len()..]
+                .chars()
+                .take_while(|c| *c != '>')
+                .collect();
+            return Some((local.to_string(), attributes));
         }
     }
     None
@@ -208,6 +223,20 @@ mod tests {
     fn handles_a_doctype_with_an_internal_subset() {
         let input = "<!DOCTYPE report [ <!ENTITY x \"y\"> ]>\n<report/>";
         assert_eq!(id_of(input), "jacoco");
+    }
+
+    #[test]
+    fn tells_clover_from_cobertura_by_their_attributes() {
+        // Both root at <coverage>; reading one as the other is silent, so the
+        // discriminator has to be explicit.
+        assert_eq!(
+            id_of(r#"<coverage generated="1719410000" clover="3.2.0"><project/></coverage>"#),
+            "clover"
+        );
+        assert_eq!(
+            id_of(r#"<coverage line-rate="0.5" branch-rate="0"><packages/></coverage>"#),
+            "cobertura"
+        );
     }
 
     #[test]
