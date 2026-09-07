@@ -450,6 +450,50 @@ pub static FORMATS: &[FormatSpec] = &[
     },
     // ---- Security ----------------------------------------------------------
     FormatSpec {
+        id: "gitlab-dependency-scanning",
+        aliases: &["gitlab-dependency"],
+        categories: &[Category::Security],
+        description: "GitLab dependency scanning report — vulnerable packages in a manifest",
+        write_notes: &[
+            (
+                NoteKind::Lossy,
+                "findings with no manifest path or no named package are dropped; the schema \
+                 requires both",
+            ),
+            (
+                NoteKind::Degraded,
+                "the schema requires a scan window and a package version; a source without them \
+                 gets a fixed epoch and an empty version",
+            ),
+        ],
+        versions: &["15.2.5"],
+        default_version: Some("15.2.5"),
+        read: None,
+        write: Some(formats::security::gitlab::write_dependency_scanning),
+    },
+    FormatSpec {
+        id: "gitlab-container-scanning",
+        aliases: &["gitlab-container"],
+        categories: &[Category::Security],
+        description: "GitLab container scanning report — vulnerable packages inside an image",
+        write_notes: &[
+            (
+                NoteKind::Lossy,
+                "findings with no image, operating system or named package are dropped; the \
+                 schema requires all three",
+            ),
+            (
+                NoteKind::Degraded,
+                "the schema requires a scan window and a package version; a source without them \
+                 gets a fixed epoch and an empty version",
+            ),
+        ],
+        versions: &["15.2.5"],
+        default_version: Some("15.2.5"),
+        read: None,
+        write: Some(formats::security::gitlab::write_container_scanning),
+    },
+    FormatSpec {
         id: "trivy-json",
         aliases: &["trivy"],
         categories: &[Category::Security],
@@ -486,7 +530,7 @@ pub static FORMATS: &[FormatSpec] = &[
         versions: &["15.2.5"],
         default_version: Some("15.2.5"),
         read: None,
-        write: Some(formats::security::gitlab_sast::write),
+        write: Some(formats::security::gitlab::write_sast),
     },
 ];
 

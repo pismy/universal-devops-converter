@@ -384,6 +384,12 @@ Primary sink: **Code Climate JSON**, in its GitLab flavour
 > *required* location fields (SAST requires none, dependency scanning requires `file` +
 > `dependency`, container scanning requires `dependency` + `operating_system` + `image`). They are
 > separate formats of one family, which also gives each its own schema validation in the tests.
+>
+> The consequence is that **a finding that cannot satisfy its target's location is dropped, and
+> counted**. That is not a defect of the conversion: an operating-system package has no manifest
+> file, so it belongs in a container-scanning report and not in a dependency-scanning one. One
+> Trivy image scan therefore yields two useful reports, each holding the half it can express.
+> Emitting the invalid entry instead would have GitLab reject the whole document.
 
 Primary sinks: **GitLab's security report schemas** (`sast`, `dependency_scanning`,
 `container_scanning`, `secret_detection`, `dast`), and **SARIF** for GitHub code scanning.
@@ -404,8 +410,8 @@ Three constraints in those schemas shape the writers:
 |---|---|---|---|
 | SARIF 2.1.0 | ✅ | ✅ | universal input; declares both categories (§3.5) |
 | GitLab SAST | — | ✅ | `gitlab-sast`, schema 15.2.5 |
-| GitLab Dependency Scanning | — | 🔜 | unblocked: the pivot now carries a versioned component |
-| GitLab Container Scanning | — | 🔜 | unblocked: the pivot now carries an image and an OS |
+| GitLab Dependency Scanning | — | ✅ | `gitlab-dependency-scanning`, schema 15.2.5 |
+| GitLab Container Scanning | — | ✅ | `gitlab-container-scanning`, schema 15.2.5 |
 | GitLab Secret Detection / DAST | — | 💭 | |
 | Trivy JSON | ✅ | ❌ | dependencies + containers + IaC + secrets, in one report. Read-only: Trivy writes it and nothing else does, and Trivy already emits SARIF, CycloneDX and GitLab's own format on request |
 | Grype JSON | 🔜 | — | |
@@ -546,8 +552,7 @@ read.
 4. ✅ **Quality** — Checkstyle (read), SARIF (read + write) and Code Climate (read + write,
    GitLab flavour included). A Checkstyle *writer* is deliberately not planned: nothing consumes
    Checkstyle that does not also read a better format.
-5. 🔜 **Security** — SARIF and Trivy in, SARIF and GitLab SAST out. The pivot now carries a
-   versioned component, an image and an operating system, which is what the dependency- and
-   container-scanning writers were waiting for; they are the next step, then the Grype reader.
+5. ✅ **Security** — SARIF and Trivy in; SARIF, GitLab SAST, dependency scanning and container
+   scanning out. Grype, OSV and secret detection remain, on demand.
 6. **SBOM** — CycloneDX ↔ SPDX.
 7. **Accessibility, performance** — on demand.

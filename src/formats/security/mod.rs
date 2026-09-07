@@ -1,2 +1,2 @@
-pub mod gitlab_sast;
+pub mod gitlab;
 pub mod trivy;
