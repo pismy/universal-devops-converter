@@ -347,6 +347,33 @@ pub static FORMATS: &[FormatSpec] = &[
         read: Some(formats::quality::codeclimate::read),
         write: Some(formats::quality::codeclimate::write_gitlab),
     },
+    // ---- Security ----------------------------------------------------------
+    FormatSpec {
+        id: "gitlab-sast",
+        aliases: &["gitlab-security"],
+        categories: &[Category::Security],
+        description: "GitLab SAST security report — feeds the security dashboard",
+        write_notes: &[
+            (
+                NoteKind::Degraded,
+                "the schema requires a scan window; a source without one gets a fixed epoch so \
+                 the output stays reproducible",
+            ),
+            (
+                NoteKind::Lossy,
+                "findings with neither an identifier nor a rule id are dropped (the schema \
+                 requires at least one identifier)",
+            ),
+            (
+                NoteKind::Lossy,
+                "issue categories have no field in the security report",
+            ),
+        ],
+        versions: &["15.2.5"],
+        default_version: Some("15.2.5"),
+        read: None,
+        write: Some(formats::security::gitlab_sast::write),
+    },
 ];
 
 /// A format plus the spec version to use with it, as named on the command line.

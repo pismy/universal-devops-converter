@@ -44,7 +44,17 @@ struct RawRun {
     #[serde(default)]
     tool: Option<RawTool>,
     #[serde(default)]
+    invocations: Vec<RawInvocation>,
+    #[serde(default)]
     results: Vec<RawResult>,
+}
+
+#[derive(Debug, Deserialize)]
+struct RawInvocation {
+    #[serde(default, rename = "startTimeUtc")]
+    start_time_utc: Option<String>,
+    #[serde(default, rename = "endTimeUtc")]
+    end_time_utc: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -59,6 +69,9 @@ struct RawDriver {
     name: Option<String>,
     #[serde(default)]
     version: Option<String>,
+    /// What semgrep and several others fill in instead of `version`.
+    #[serde(default, rename = "semanticVersion")]
+    semantic_version: Option<String>,
     #[serde(default, rename = "informationUri")]
     information_uri: Option<String>,
     #[serde(default)]
@@ -181,12 +194,24 @@ pub fn read(input: &[u8], ctx: &mut FormatCtx) -> Result<Doc> {
     let mut doc = FindingsDoc::default();
 
     for run in log.runs {
+        for invocation in &run.invocations {
+            if doc.scan.start.is_none() {
+                doc.scan.start = invocation.start_time_utc.as_deref().and_then(iso_seconds);
+            }
+            if doc.scan.end.is_none() {
+                doc.scan.end = invocation.end_time_utc.as_deref().and_then(iso_seconds);
+            }
+        }
+
         let driver = run.tool.and_then(|t| t.driver);
         if doc.tool.is_none() {
             if let Some(driver) = &driver {
                 doc.tool = Some(Tool {
                     name: driver.name.clone().unwrap_or_else(|| "sarif".into()),
-                    version: driver.version.clone(),
+                    version: driver
+                        .version
+                        .clone()
+                        .or_else(|| driver.semantic_version.clone()),
                     url: driver.information_uri.clone(),
                 });
             }
@@ -244,6 +269,20 @@ fn check_version(declared: Option<&str>, ctx: &mut FormatCtx) -> Result<()> {
         }
     }
     Ok(())
+}
+
+/// SARIF timestamps carry fractional seconds and a zone (`2026-06-26T12:00:00.123Z`);
+/// the pivot stores the `yyyy-mm-ddThh:mm:ss` prefix, which is what the sinks
+/// that need a time accept.
+fn iso_seconds(raw: &str) -> Option<String> {
+    let candidate = raw.get(..19)?;
+    let shape_ok = candidate.len() == 19
+        && candidate.as_bytes()[4] == b'-'
+        && candidate.as_bytes()[7] == b'-'
+        && candidate.as_bytes()[10] == b'T'
+        && candidate.as_bytes()[13] == b':'
+        && candidate.as_bytes()[16] == b':';
+    shape_ok.then(|| candidate.to_string())
 }
 
 fn lookup_rule<'a>(
@@ -738,9 +777,14 @@ mod tests {
       "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
       "version": "2.1.0",
       "runs": [{
+        "invocations": [{
+          "executionSuccessful": true,
+          "startTimeUtc": "2026-06-26T12:00:00.123456Z",
+          "endTimeUtc": "2026-06-26T12:00:09.987654Z"
+        }],
         "tool": {"driver": {
           "name": "semgrep",
-          "version": "1.2.3",
+          "semanticVersion": "1.75.0",
           "rules": [{
             "id": "python.lang.security.audit",
             "name": "audit",
@@ -1000,6 +1044,27 @@ mod tests {
         assert_eq!(reread.severity, Severity::Critical);
         assert_eq!(reread.location, original.location);
         assert_eq!(reread.fingerprint, original.fingerprint);
+    }
+
+    #[test]
+    fn reads_the_scan_window_and_the_semantic_version() {
+        let (doc, _) = parse(SAMPLE);
+        assert_eq!(doc.scan.start.as_deref(), Some("2026-06-26T12:00:00"));
+        assert_eq!(doc.scan.end.as_deref(), Some("2026-06-26T12:00:09"));
+        // semgrep fills in semanticVersion, not version.
+        assert_eq!(
+            doc.tool.as_ref().unwrap().version.as_deref(),
+            Some("1.75.0")
+        );
+    }
+
+    #[test]
+    fn a_malformed_timestamp_is_ignored_rather_than_propagated() {
+        let (doc, _) = parse(
+            r#"{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"t"}},
+                 "invocations":[{"startTimeUtc":"yesterday"}],"results":[]}]}"#,
+        );
+        assert_eq!(doc.scan.start, None);
     }
 
     #[test]

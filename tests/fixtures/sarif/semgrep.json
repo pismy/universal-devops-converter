@@ -12,16 +12,25 @@
             {
               "id": "python.lang.security.audit.dangerous-subprocess-use",
               "name": "dangerous-subprocess-use",
-              "shortDescription": { "text": "Detected subprocess function with user input" },
-              "fullDescription": { "text": "Audit the use of subprocess with untrusted input." },
+              "shortDescription": {
+                "text": "Detected subprocess function with user input"
+              },
+              "fullDescription": {
+                "text": "Audit the use of subprocess with untrusted input."
+              },
               "help": {
                 "text": "Use shlex.quote or pass a list of arguments.",
                 "markdown": "Use `shlex.quote` or pass a list of arguments."
               },
               "helpUri": "https://semgrep.dev/r/python.lang.security.audit.dangerous-subprocess-use",
-              "defaultConfiguration": { "level": "warning" },
+              "defaultConfiguration": {
+                "level": "warning"
+              },
               "properties": {
-                "tags": ["security", "external/cwe/cwe-078"],
+                "tags": [
+                  "security",
+                  "external/cwe/cwe-078"
+                ],
                 "precision": "very-high",
                 "security-severity": "8.6"
               }
@@ -33,27 +42,45 @@
         {
           "ruleId": "python.lang.security.audit.dangerous-subprocess-use",
           "ruleIndex": 0,
-          "message": { "text": "Detected subprocess function 'run' with user-controlled input." },
+          "message": {
+            "text": "Detected subprocess function 'run' with user-controlled input."
+          },
           "locations": [
             {
               "physicalLocation": {
-                "artifactLocation": { "uri": "app/shell.py", "uriBaseId": "%SRCROOT%" },
-                "region": { "startLine": 12, "startColumn": 5, "endLine": 12, "endColumn": 44 }
+                "artifactLocation": {
+                  "uri": "app/shell.py",
+                  "uriBaseId": "%SRCROOT%"
+                },
+                "region": {
+                  "startLine": 12,
+                  "startColumn": 5,
+                  "endLine": 12,
+                  "endColumn": 44
+                }
               }
             }
           ],
-          "fingerprints": { "matchBasedId/v1": "7d0a8f6c1b2e" }
+          "fingerprints": {
+            "matchBasedId/v1": "7d0a8f6c1b2e"
+          }
         },
         {
           "ruleId": "python.lang.security.audit.dangerous-subprocess-use",
           "ruleIndex": 0,
           "level": "error",
-          "message": { "text": "Detected subprocess function 'Popen' with user-controlled input." },
+          "message": {
+            "text": "Detected subprocess function 'Popen' with user-controlled input."
+          },
           "locations": [
             {
               "physicalLocation": {
-                "artifactLocation": { "uri": "app/shell.py" },
-                "region": { "startLine": 30 }
+                "artifactLocation": {
+                  "uri": "app/shell.py"
+                },
+                "region": {
+                  "startLine": 30
+                }
               }
             }
           ],
@@ -65,8 +92,12 @@
                     {
                       "location": {
                         "physicalLocation": {
-                          "artifactLocation": { "uri": "app/shell.py" },
-                          "region": { "startLine": 28 }
+                          "artifactLocation": {
+                            "uri": "app/shell.py"
+                          },
+                          "region": {
+                            "startLine": 28
+                          }
                         }
                       }
                     }
@@ -75,6 +106,13 @@
               ]
             }
           ]
+        }
+      ],
+      "invocations": [
+        {
+          "executionSuccessful": true,
+          "startTimeUtc": "2026-06-26T12:00:00.123456Z",
+          "endTimeUtc": "2026-06-26T12:00:09.987654Z"
         }
       ]
     }

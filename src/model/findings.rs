@@ -130,9 +130,22 @@ impl Finding {
     }
 }
 
+/// When the analysis ran, as `yyyy-mm-ddThh:mm:ss` in UTC.
+///
+/// Carried only because some sinks *require* it — GitLab's security reports
+/// will not validate without both ends. Most formats say nothing about it, so
+/// it is optional here and the writers that need it have to decide what to do
+/// with `None`.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ScanWindow {
+    pub start: Option<String>,
+    pub end: Option<String>,
+}
+
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct FindingsDoc {
     pub tool: Option<Tool>,
+    pub scan: ScanWindow,
     pub findings: Vec<Finding>,
 }
 
@@ -141,6 +154,9 @@ impl FindingsDoc {
     /// overlapping file sets is common and platforms display duplicates twice.
     pub fn merge(&mut self, other: FindingsDoc) {
         self.tool = self.tool.take().or(other.tool);
+        // Merging shards widens the window rather than picking one side.
+        self.scan.start = min_time(self.scan.start.take(), other.scan.start);
+        self.scan.end = max_time(self.scan.end.take(), other.scan.end);
         for finding in other.findings {
             if !self.findings.contains(&finding) {
                 self.findings.push(finding);
@@ -167,6 +183,21 @@ impl FindingsDoc {
                 .then_with(|| a.rule_id.cmp(&b.rule_id))
                 .then_with(|| a.description.cmp(&b.description))
         });
+    }
+}
+
+/// ISO8601 `yyyy-mm-ddThh:mm:ss` sorts correctly as text, so no date parsing.
+fn min_time(a: Option<String>, b: Option<String>) -> Option<String> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.min(b)),
+        (a, b) => a.or(b),
+    }
+}
+
+fn max_time(a: Option<String>, b: Option<String>) -> Option<String> {
+    match (a, b) {
+        (Some(a), Some(b)) => Some(a.max(b)),
+        (a, b) => a.or(b),
     }
 }
 

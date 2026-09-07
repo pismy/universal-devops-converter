@@ -5,4 +5,5 @@
 
 pub mod coverage;
 pub mod quality;
+pub mod security;
 pub mod tests;

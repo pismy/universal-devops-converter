@@ -141,6 +141,7 @@ pub fn schema_for(format_id: &str) -> Schema {
         "sarif" => Schema::Json("sarif-2.1.0.json"),
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
+        "gitlab-sast" => Schema::Json("gitlab-sast-15.2.5.json"),
         "lcov" => Schema::None("a line-oriented text format with no formal grammar"),
         "checkstyle" => Schema::None("upstream publishes no schema"),
         other => panic!(

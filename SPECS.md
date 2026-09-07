@@ -366,16 +366,34 @@ Primary sink: **Code Climate JSON**, in its GitLab flavour
 > - dependencies → `location.file` + `location.dependency.package.name`
 > - containers → `location.image` + `location.operating_system` + `location.dependency`
 >
-> One pivot, several **output profiles**. GitLab in fact converged these schemas into a single
-> *Security Report Schema*. The same remark applies to secret detection, DAST and IaC scanning.
+> One pivot, several **output formats** — not one writer with a switch. Reading the published
+> schemas settles it: each profile has its own schema, its own `scan.type` enum, and different
+> *required* location fields (SAST requires none, dependency scanning requires `file` +
+> `dependency`, container scanning requires `dependency` + `operating_system` + `image`). They are
+> separate formats of one family, which also gives each its own schema validation in the tests.
 
-Primary sinks: **GitLab Security Report Schema** (profiles `dependency_scanning`,
-`container_scanning`, `sast`, `secret_detection`, `dast`), and **SARIF** for GitHub code scanning.
+Primary sinks: **GitLab's security report schemas** (`sast`, `dependency_scanning`,
+`container_scanning`, `secret_detection`, `dast`), and **SARIF** for GitHub code scanning.
+
+Three constraints in those schemas shape the writers:
+
+- `scan.start_time` / `scan.end_time` are **required**, with a fixed `yyyy-mm-ddThh:mm:ss` shape.
+  Reading the clock would break the byte-stability the project guarantees, so the window comes
+  from the source when it has one (SARIF's `invocations[]`) and otherwise falls back to a fixed
+  epoch with a `degraded:` notice.
+- `identifiers` needs **at least one entry**, while a linter finding has none. One is synthesized
+  from the rule id; a finding with neither is dropped rather than making the whole document
+  invalid.
+- `id` is expected to be a UUID. The pivot's 128-bit fingerprint is formatted as one, and derived
+  from the source fingerprint when there is one, so a finding keeps its identity across runs.
 
 | Format | Read | Write | Notes |
 |---|---|---|---|
-| SARIF 2.1.0 | 🔜 | 🔜 | universal input pivot |
-| GitLab Security Report | — | 🔜 | multiple profiles |
+| SARIF 2.1.0 | ✅ | ✅ | universal input; declares both categories (§3.5) |
+| GitLab SAST | — | ✅ | `gitlab-sast`, schema 15.2.5 |
+| GitLab Dependency Scanning | — | 🔜 | blocked on the pivot carrying a versioned component |
+| GitLab Container Scanning | — | 🔜 | blocked on the pivot carrying an image and an OS |
+| GitLab Secret Detection / DAST | — | 💭 | |
 | Trivy JSON | 🔜 | — | dependencies + containers + IaC + secrets |
 | Grype JSON | 🔜 | — | |
 | OSV / osv-scanner | 💭 | — | |
@@ -514,6 +532,8 @@ read.
 4. ✅ **Quality** — Checkstyle (read), SARIF (read + write) and Code Climate (read + write,
    GitLab flavour included). A Checkstyle *writer* is deliberately not planned: nothing consumes
    Checkstyle that does not also read a better format. ESLint JSON next, if asked for.
-5. **Security** — SARIF → GitLab Security Report, then Trivy / Grype / OSV.
+5. 🔜 **Security** — SARIF → GitLab SAST done. Dependency and container scanning need the pivot
+   to carry a versioned component, an image and an OS; that arrives with the Trivy and Grype
+   readers, which is the order to do them in.
 6. **SBOM** — CycloneDX ↔ SPDX.
 7. **Accessibility, performance** — on demand.
