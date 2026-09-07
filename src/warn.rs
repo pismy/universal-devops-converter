@@ -104,6 +104,7 @@ impl Warnings {
 #[derive(Debug, Default)]
 pub struct FormatCtx {
     version: Option<&'static str>,
+    path_rewriting: bool,
     warnings: Warnings,
 }
 
@@ -113,8 +114,25 @@ impl FormatCtx {
     pub fn new(version: Option<&'static str>) -> Self {
         FormatCtx {
             version,
+            path_rewriting: false,
             warnings: Warnings::new(),
         }
+    }
+
+    /// Tell the context that the run rewrites paths (`--source-root` or
+    /// `--strip-prefix`).
+    ///
+    /// A reader for a format whose paths are known not to be
+    /// repository-relative — Go import paths are the case in point — needs this
+    /// to avoid warning about a problem the user has already addressed. A
+    /// notice that fires on correct usage teaches people to ignore notices.
+    pub fn set_path_rewriting(&mut self, requested: bool) {
+        self.path_rewriting = requested;
+    }
+
+    /// Whether the run was asked to rewrite paths.
+    pub fn path_rewriting_requested(&self) -> bool {
+        self.path_rewriting
     }
 
     /// Spec version to target. A writer for an unversioned format ignores it.

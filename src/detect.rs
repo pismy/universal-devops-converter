@@ -189,10 +189,7 @@ fn sniff_lines(text: &str) -> Outcome {
             }));
         }
         if line.starts_with("mode: ") {
-            return Some(Err(Planned {
-                name: "Go coverage profile",
-                category: "coverage",
-            }));
+            return Some(Ok("go-coverprofile"));
         }
     }
     None
@@ -252,6 +249,14 @@ mod tests {
     #[test]
     fn identifies_lcov_by_its_record_prefixes() {
         assert_eq!(id_of("TN:\nSF:src/a.rs\nDA:1,1\nend_of_record\n"), "lcov");
+    }
+
+    #[test]
+    fn identifies_a_go_coverage_profile_by_its_mode_header() {
+        assert_eq!(
+            id_of("mode: set\ngithub.com/acme/proj/main.go:12.13,15.2 2 1\n"),
+            "go-coverprofile"
+        );
     }
 
     #[test]

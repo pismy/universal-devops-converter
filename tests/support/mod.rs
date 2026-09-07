@@ -144,7 +144,9 @@ pub fn schema_for(format_id: &str) -> Schema {
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
         "gitlab-sast" => Schema::Json("gitlab-sast-15.2.5.json"),
-        "lcov" => Schema::None("a line-oriented text format with no formal grammar"),
+        "go-coverprofile" | "lcov" => {
+            Schema::None("a line-oriented text format with no formal grammar")
+        }
         "checkstyle" => Schema::None("upstream publishes no schema"),
         other => panic!(
             "format '{other}' has no entry in `schema_for`. Add one: either the schema its \

@@ -121,6 +121,10 @@ udc -i lcov.info -t cobertura -o coverage.xml --source-root "$PWD"
 # JaCoCo → Cobertura, straight from a pipe
 cat build/reports/jacoco.xml | udc -f jacoco -t cobertura -o coverage.xml
 
+# Go: note the module path, which `go test` writes into every path
+go test -coverprofile=coverage.out ./...
+udc -i coverage.out -t cobertura -o coverage.xml --strip-prefix github.com/acme/proj
+
 # nyc / Jest coverage-final.json → Cobertura
 udc -i coverage/coverage-final.json -t cobertura -o coverage.xml --source-root "$PWD"
 
@@ -225,7 +229,7 @@ Today:
 
 | Category     | Read                            | Write                               |
 | ------------ | ------------------------------- | ----------------------------------- |
-| **Coverage** | LCOV, Clover, Cobertura, Istanbul, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
+| **Coverage** | LCOV, Clover, Cobertura, Go, Istanbul, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
 | **Tests**    | JUnit XML                       | JUnit XML                           |
 | **Quality**  | Checkstyle, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF                           | SARIF, GitLab SAST                         |
@@ -329,6 +333,17 @@ If the path is not what the platform would see from the repository root, fix it:
 ```sh
 udc -i lcov.info -t cobertura -o coverage.xml --source-root "$CI_PROJECT_DIR"
 ```
+
+**Go is the sharpest case.** `go test -coverprofile` writes *import* paths —
+`github.com/acme/proj/main.go` — which match nothing in the repository tree.
+Strip the module path:
+
+```sh
+udc -i coverage.out -t cobertura --strip-prefix github.com/acme/proj
+```
+
+`udc` says so on stderr when it reads a Go profile and no rewriting was asked
+for, and stays quiet once you have dealt with it.
 
 `--strip-prefix` handles the cases `--source-root` cannot — a monorepo
 sub-project, a container path that does not match the checkout:

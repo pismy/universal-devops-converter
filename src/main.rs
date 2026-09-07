@@ -99,6 +99,9 @@ fn convert(args: &ConvertArgs, style: Style) -> Result<()> {
         );
 
         let mut ctx = origin.ctx();
+        // Readers whose paths are not repository-relative by nature need to
+        // know whether the user has already asked for a rewrite.
+        ctx.set_path_rewriting(!mapper.is_noop());
         let parsed = (origin.spec.reader()?)(&bytes, &mut ctx)?;
         warnings.absorb(ctx.into_warnings());
 

@@ -267,6 +267,20 @@ pub static FORMATS: &[FormatSpec] = &[
         write: Some(formats::coverage::cobertura::write),
     },
     FormatSpec {
+        id: "go-coverprofile",
+        aliases: &["gocover", "gocoverprofile"],
+        categories: &[Category::Coverage],
+        description: "Go coverage profile (`go test -coverprofile`)",
+        write_notes: &[],
+        versions: &[],
+        default_version: None,
+        read: Some(formats::coverage::gocover::read),
+        // Read-only: a profile records basic blocks with column positions and
+        // statement counts, none of which the pivot holds, and the only
+        // consumer is `go tool cover` reading what Go itself just wrote.
+        write: None,
+    },
+    FormatSpec {
         id: "istanbul",
         aliases: &["coverage-final", "nyc"],
         categories: &[Category::Coverage],

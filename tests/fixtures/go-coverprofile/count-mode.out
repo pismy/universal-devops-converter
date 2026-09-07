@@ -1,0 +1,4 @@
+mode: count
+github.com/acme/proj/pkg/parse/parse.go:11.31,13.2 1 42
+github.com/acme/proj/pkg/parse/parse.go:15.2,15.24 1 7
+github.com/acme/proj/pkg/parse/parse.go:18.2,21.9 2 0
