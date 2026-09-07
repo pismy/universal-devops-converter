@@ -121,6 +121,9 @@ udc -i lcov.info -t cobertura -o coverage.xml --source-root "$PWD"
 # JaCoCo → Cobertura, straight from a pipe
 cat build/reports/jacoco.xml | udc -f jacoco -t cobertura -o coverage.xml
 
+# nyc / Jest coverage-final.json → Cobertura
+udc -i coverage/coverage-final.json -t cobertura -o coverage.xml --source-root "$PWD"
+
 # PHPUnit's Clover report → Cobertura
 udc -i build/logs/clover.xml -t cobertura -o coverage.xml --source-root "$PWD"
 
@@ -222,7 +225,7 @@ Today:
 
 | Category     | Read                            | Write                               |
 | ------------ | ------------------------------- | ----------------------------------- |
-| **Coverage** | LCOV, Clover, Cobertura, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
+| **Coverage** | LCOV, Clover, Cobertura, Istanbul, JaCoCo | LCOV, Clover, Cobertura, JaCoCo |
 | **Tests**    | JUnit XML                       | JUnit XML                           |
 | **Quality**  | Checkstyle, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF                           | SARIF, GitLab SAST                         |

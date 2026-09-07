@@ -290,7 +290,7 @@ GitLab 17).
 | Cobertura | ✅ | ✅ | includes the `coverage.py` dialect |
 | JaCoCo | ✅ | ✅ | no *hit* counter: covered = 1, uncovered = 0 |
 | Clover | ✅ | ✅ | PHPUnit, Jest. Roots at `<coverage>` like Cobertura — see below |
-| Istanbul JSON | 🔜 | — | `nyc` / `coverage-final.json` |
+| Istanbul JSON | ✅ | ❌ | `nyc`, Jest's `json` reporter. Read-only: the format is position-based and the pivot has no columns, so writing it would fabricate every `start`/`end` |
 | Go `-coverprofile` | 🔜 | — | `go test`'s native format |
 | OpenCover / dotCover | 💭 | — | .NET |
 | Visual Studio `.coveragexml` | 💭 | — | .NET |

@@ -156,6 +156,11 @@ fn sniff_json(text: &str) -> Outcome {
     if has(r#""runs""#) && (has("sarif") || has(r#""tool""#)) {
         return Some(Ok("sarif"));
     }
+    // An Istanbul coverage map is an object keyed by file path, which is no
+    // fingerprint at all; `statementMap` is what every entry carries.
+    if has(r#""statementMap""#) {
+        return Some(Ok("istanbul"));
+    }
     if has(r#""SchemaVersion""#) && has(r#""Results""#) {
         return Some(Err(Planned {
             name: "Trivy JSON",
@@ -254,6 +259,14 @@ mod tests {
         assert_eq!(
             id_of(r#"{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"x"}}}]}"#),
             "sarif"
+        );
+    }
+
+    #[test]
+    fn identifies_an_istanbul_coverage_map_by_its_statement_map() {
+        assert_eq!(
+            id_of(r#"{"src/a.js":{"path":"src/a.js","statementMap":{},"s":{}}}"#),
+            "istanbul"
         );
     }
 

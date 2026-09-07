@@ -267,6 +267,19 @@ pub static FORMATS: &[FormatSpec] = &[
         write: Some(formats::coverage::cobertura::write),
     },
     FormatSpec {
+        id: "istanbul",
+        aliases: &["coverage-final", "nyc"],
+        categories: &[Category::Coverage],
+        description: "Istanbul JSON coverage map (nyc, Jest's json reporter)",
+        write_notes: &[],
+        versions: &[],
+        default_version: None,
+        read: Some(formats::coverage::istanbul::read),
+        // Read-only on purpose: the format is position-based and the pivot has
+        // no columns, so writing it would fabricate every start/end position.
+        write: None,
+    },
+    FormatSpec {
         id: "jacoco",
         aliases: &[],
         categories: &[Category::Coverage],

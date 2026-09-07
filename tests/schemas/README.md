@@ -29,6 +29,7 @@ tightens.
 | `junit.xsd` | JUnit XML | There is no official schema. The Ant-era one ([windyroad/JUnit-Schema](https://github.com/windyroad/JUnit-Schema), Apache-2.0) describes a contract nothing honours any more: it forbids `tests`/`failures`/`time` on `<testsuites>`, which every modern producer emits, and requires `package`, `hostname` and a strictly-typed `timestamp`. It rejects pytest, Jest and our own output alike. Ours describes the consensus format instead. |
 | `codeclimate.schema.json` | Code Climate | The analyzer specification is prose (codeclimate/platform, `spec/analyzers/SPEC.md`). |
 | `codeclimate-gitlab.schema.json` | GitLab Code Quality | GitLab documents the contract in prose and publishes no schema. |
+| `istanbul.schema.json` | Istanbul coverage map | `istanbul-lib-coverage` defines the shape in code (its `_coverageSchema` hash) and publishes no JSON Schema. |
 | `clover.xsd` | Clover XML | OpenClover ships a schema inside its distribution but publishes none at a stable URL a test suite can vendor from. Ours describes what PHPUnit and Jest actually emit. |
 
 ## Formats with no schema
