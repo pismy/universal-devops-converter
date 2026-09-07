@@ -326,6 +326,18 @@ pub static FORMATS: &[FormatSpec] = &[
         write: Some(formats::tests::junit::write),
     },
     FormatSpec {
+        id: "go-test-json",
+        aliases: &["gotest", "gotestjson"],
+        categories: &[Category::Tests],
+        description: "`go test -json` event stream (NDJSON)",
+        write_notes: &[],
+        versions: &[],
+        default_version: None,
+        read: Some(formats::tests::gotest::read),
+        // Read-only: the stream is a runner's log, and nothing replays one.
+        write: None,
+    },
+    FormatSpec {
         id: "trx",
         aliases: &["mstest", "vstest"],
         categories: &[Category::Tests],

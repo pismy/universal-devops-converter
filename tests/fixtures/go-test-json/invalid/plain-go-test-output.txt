@@ -1,0 +1,4 @@
+ok      github.com/acme/proj/calc       0.012s
+--- FAIL: TestDivides (0.00s)
+    calc_test.go:23: expected 2, got 3
+FAIL

@@ -323,7 +323,7 @@ attributes, optional `<testsuites>` root, `<skipped>` vs `status`).
 |---|---|---|---|
 | JUnit XML | ✅ | ✅ | tolerant multi-dialect reader |
 | TRX | ✅ | ❌ | MSTest / `dotnet test`. Read-only: a TRX file is a web of GUID cross-references between `Results`, `TestDefinitions`, `TestEntries` and `TestLists` that would all have to be fabricated, and its consumers read JUnit too |
-| `go test -json` | 🔜 | — | NDJSON |
+| `go test -json` | ✅ | ❌ | NDJSON event stream. Read-only: it is a runner's log, and nothing replays one. No schema either — a JSON Schema describes one document, not a stream |
 | TAP | 🔜 | — | Test Anything Protocol 13/14 |
 | NUnit 2/3 | 💭 | — | |
 | xUnit.net | 💭 | — | |
@@ -541,7 +541,7 @@ read.
    CI/release, install scripts.
 2. ✅ **Coverage** — LCOV, Cobertura, JaCoCo (the LCOV → Cobertura conversion validates the design
    end to end).
-3. 🔜 **Tests** — JUnit (reader + writer) and TRX (reader) done; `go test -json` and TAP remain.
+3. 🔜 **Tests** — JUnit (reader + writer), TRX and `go test -json` (readers) done; TAP remains.
 4. ✅ **Quality** — Checkstyle (read), SARIF (read + write) and Code Climate (read + write,
    GitLab flavour included). A Checkstyle *writer* is deliberately not planned: nothing consumes
    Checkstyle that does not also read a better format.

@@ -160,6 +160,11 @@ fn sniff_json(text: &str) -> Outcome {
     if has(r#""runs""#) && (has("sarif") || has(r#""tool""#)) {
         return Some(Ok("sarif"));
     }
+    // `go test -json` is a *stream* of documents, so it never parses as one
+    // JSON value; the pair of keys on its first line is what identifies it.
+    if has(r#""Action""#) && has(r#""Package""#) {
+        return Some(Ok("go-test-json"));
+    }
     // An Istanbul coverage map is an object keyed by file path, which is no
     // fingerprint at all; `statementMap` is what every entry carries.
     if has(r#""statementMap""#) {
@@ -278,6 +283,14 @@ mod tests {
         assert_eq!(
             id_of(r#"{"version":"2.1.0","runs":[{"tool":{"driver":{"name":"x"}}}]}"#),
             "sarif"
+        );
+    }
+
+    #[test]
+    fn identifies_a_go_test_event_stream() {
+        assert_eq!(
+            id_of(r#"{"Time":"2026-06-26T12:00:00Z","Action":"run","Package":"p","Test":"T"}"#),
+            "go-test-json"
         );
     }
 

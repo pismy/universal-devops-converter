@@ -149,6 +149,10 @@ pub fn schema_for(format_id: &str) -> Schema {
         "go-coverprofile" | "lcov" => {
             Schema::None("a line-oriented text format with no formal grammar")
         }
+        "go-test-json" => Schema::None(
+            "a stream of JSON documents, one per line; a JSON Schema describes one document, \
+             not a stream",
+        ),
         "checkstyle" => Schema::None("upstream publishes no schema"),
         other => panic!(
             "format '{other}' has no entry in `schema_for`. Add one: either the schema its \
