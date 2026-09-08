@@ -145,6 +145,11 @@ fn sniff_json(text: &str) -> Outcome {
     if has(r#""bomFormat""#) {
         return Some(Ok("cyclonedx-json"));
     }
+    // SPDX 3 is a graph in JSON-LD; SPDX 2 a document with arrays. The
+    // `@context` is what tells them apart, and it comes first in the file.
+    if has(r#""@context""#) && has("spdx.org/rdf/3.") {
+        return Some(Ok("spdx3-json"));
+    }
     if has(r#""spdxVersion""#) || has(r#""SPDXID""#) {
         return Some(Ok("spdx-json"));
     }
@@ -360,6 +365,14 @@ mod tests {
         assert_eq!(
             id_of(r#"{"SchemaVersion":2,"ArtifactName":"x","Results":[]}"#),
             "trivy-json"
+        );
+    }
+
+    #[test]
+    fn tells_spdx_3_from_spdx_2() {
+        assert_eq!(
+            id_of(r#"{"@context":"https://spdx.org/rdf/3.0.1/spdx-context.jsonld","@graph":[]}"#),
+            "spdx3-json"
         );
     }
 

@@ -599,6 +599,31 @@ pub static FORMATS: &[FormatSpec] = &[
         write: Some(formats::sbom::cyclonedx_xml::write),
     },
     FormatSpec {
+        id: "spdx3-json",
+        aliases: &["spdx3"],
+        categories: &[Category::Sbom],
+        description: "SPDX 3.0 JSON-LD bill of materials",
+        write_notes: &[
+            (
+                NoteKind::Degraded,
+                "elements are addressed by IRI, so every element is renamed and the relationship \
+                 graph rewritten against the new names",
+            ),
+            (
+                NoteKind::Lossy,
+                "only dependsOn and the licence relationships survive; SPDX 3's wider vocabulary \
+                 has no pivot",
+            ),
+        ],
+        // SPDX 3 is a different format from SPDX 2, not a newer version of it:
+        // a graph of elements rather than a document with arrays. Giving it its
+        // own id is what keeps `spdx-json@3.0` from meaning something it cannot.
+        versions: &["3.0.1"],
+        default_version: Some("3.0.1"),
+        read: Some(formats::sbom::spdx3_json::read),
+        write: Some(formats::sbom::spdx3_json::write),
+    },
+    FormatSpec {
         id: "spdx-json",
         aliases: &["spdx"],
         categories: &[Category::Sbom],

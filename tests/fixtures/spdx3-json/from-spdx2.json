@@ -1,0 +1,118 @@
+{
+  "@context": "https://spdx.org/rdf/3.0.1/spdx-context.jsonld",
+  "@graph": [
+    {
+      "@id": "_:creationInfo",
+      "created": "2026-06-26T12:00:00Z",
+      "createdBy": [
+        "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Agent-udc"
+      ],
+      "specVersion": "3.0.1",
+      "type": "CreationInfo"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "name": "udc-1.0.0",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Agent-udc",
+      "type": "Agent"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "name": "acme/api",
+      "software_packageVersion": "1.2.3",
+      "software_primaryPurpose": "application",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/acme-api",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "name": "libssl3",
+      "software_packageUrl": "pkg:deb/debian/libssl3@3.0.11-1",
+      "software_packageVersion": "3.0.11-1",
+      "software_primaryPurpose": "library",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/libssl3",
+      "type": "software_Package"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "description": "Lodash modular utilities.",
+      "name": "lodash",
+      "software_copyrightText": "Copyright JS Foundation and other contributors",
+      "software_packageUrl": "pkg:npm/lodash@4.17.21",
+      "software_packageVersion": "4.17.21",
+      "software_primaryPurpose": "library",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/lodash",
+      "suppliedBy": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Agent-OpenJS-Foundation",
+      "type": "software_Package",
+      "verifiedUsing": [
+        {
+          "algorithm": "sha256",
+          "hashValue": "0d2c1e6d0b1a1c9f4d5e6a7b8c9d0e1f2a3b4c5d6e7f8091a2b3c4d5e6f70819",
+          "type": "Hash"
+        }
+      ]
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "name": "OpenJS Foundation",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Agent-OpenJS-Foundation",
+      "type": "Agent"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "simplelicensing_licenseExpression": "Apache-2.0 OR MIT",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/License-1",
+      "type": "simplelicensing_LicenseExpression"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "simplelicensing_licenseExpression": "MIT",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/License-2",
+      "type": "simplelicensing_LicenseExpression"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "from": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/libssl3",
+      "relationshipType": "hasDeclaredLicense",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Relationship-license-1",
+      "to": [
+        "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/License-1"
+      ],
+      "type": "Relationship"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "from": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/lodash",
+      "relationshipType": "hasDeclaredLicense",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Relationship-license-2",
+      "to": [
+        "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/License-2"
+      ],
+      "type": "Relationship"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "from": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/acme-api",
+      "relationshipType": "dependsOn",
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Relationship-depends-0",
+      "to": [
+        "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/libssl3",
+        "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/lodash"
+      ],
+      "type": "Relationship"
+    },
+    {
+      "creationInfo": "_:creationInfo",
+      "name": "acme/api",
+      "profileConformance": [
+        "core",
+        "software"
+      ],
+      "rootElement": [
+        "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/acme-api"
+      ],
+      "spdxId": "https://spdx.org/spdxdocs/acme-api-a7db2c458dbb63452ff7e3b2a067eec4/Document",
+      "type": "SpdxDocument"
+    }
+  ]
+}

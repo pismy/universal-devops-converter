@@ -149,6 +149,9 @@ semgrep --sarif | udc -f sarif -t gitlab-sast -o gl-sast-report.json
 # CycloneDX XML → JSON, keeping the spec version it came in as
 udc -i sbom.xml -t cyclonedx-json -o sbom.json
 
+# SPDX 2 → SPDX 3: `spdx3-json` is its own format, not `spdx-json@3.0`
+udc -i sbom.spdx.json -t spdx3-json -o sbom.spdx3.json
+
 # CycloneDX ↔ SPDX, in one binary
 udc -i sbom.cdx.json -t spdx-json -o sbom.spdx.json
 
@@ -261,7 +264,7 @@ Today:
 | **Tests**    | JUnit XML, TRX, `go test -json`, TAP | JUnit XML                      |
 | **Quality**  | Checkstyle, ESLint, SARIF, Code Climate | SARIF, Code Climate, Code Climate (GitLab) |
 | **Security** | SARIF, Trivy                    | SARIF, GitLab SAST / dependency / container |
-| **SBOM**     | CycloneDX JSON/XML, SPDX JSON   | CycloneDX JSON/XML (1.4–1.6), SPDX JSON (2.2 / 2.3) |
+| **SBOM**     | CycloneDX JSON/XML, SPDX JSON, SPDX 3 JSON-LD | CycloneDX JSON/XML (1.4–1.6), SPDX JSON (2.2 / 2.3), SPDX 3 JSON-LD (3.0.1) |
 
 Any readable format converts to any writable format **sharing a category**.
 Converting a Checkstyle report into Cobertura is an error, not a best-effort

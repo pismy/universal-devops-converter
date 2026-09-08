@@ -1,9 +1,10 @@
 //! Shared plumbing for the fixture-driven tests: fixture discovery and
 //! schema validation.
 
+use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
-use std::sync::OnceLock;
+use std::sync::{Arc, Mutex, OnceLock};
 
 use universal_devops_converter::registry::{self, FormatSpec};
 
@@ -153,6 +154,7 @@ pub fn schema_for(format_id: &str) -> Schema {
         // which it claims; validating against the wrong one proves nothing.
         "cyclonedx-json" => Schema::JsonPerVersion("cyclonedx"),
         "spdx-json" => Schema::JsonPerVersion("spdx"),
+        "spdx3-json" => Schema::Json("spdx3-3.0.1.schema.json"),
         "cyclonedx-xml" => Schema::XsdPerVersion("cyclonedx"),
         "codeclimate" => Schema::Json("codeclimate.schema.json"),
         "codeclimate-gitlab" => Schema::Json("codeclimate-gitlab.schema.json"),
@@ -274,19 +276,47 @@ impl jsonschema::Retrieve for VendoredSchemas {
     }
 }
 
-fn validate_json(schema_path: &Path, bytes: &[u8], origin: &str) -> Result<(), String> {
+/// Compiled validators, kept for the life of the test run.
+///
+/// Compiling a schema is not free — SPDX 3's is 265 KB across 449 definitions,
+/// and rebuilding it for every conversion took the matrix from under a second
+/// to nearly two minutes. The schemas are immutable files, so one compilation
+/// each is enough.
+fn validator_for(schema_path: &Path) -> Result<Arc<jsonschema::Validator>, String> {
+    static CACHE: OnceLock<Mutex<HashMap<PathBuf, Arc<jsonschema::Validator>>>> = OnceLock::new();
+    let cache = CACHE.get_or_init(|| Mutex::new(HashMap::new()));
+
+    if let Some(validator) = cache
+        .lock()
+        .expect("the cache is not poisoned")
+        .get(schema_path)
+    {
+        return Ok(Arc::clone(validator));
+    }
+
     let schema: serde_json::Value = serde_json::from_slice(
         &std::fs::read(schema_path).map_err(|e| format!("cannot read {schema_path:?}: {e}"))?,
     )
     .map_err(|e| format!("{schema_path:?} is not valid JSON: {e}"))?;
 
+    let validator = Arc::new(
+        jsonschema::options()
+            .with_retriever(VendoredSchemas)
+            .build(&schema)
+            .map_err(|e| format!("{schema_path:?} is not a usable JSON Schema: {e}"))?,
+    );
+    cache
+        .lock()
+        .expect("the cache is not poisoned")
+        .insert(schema_path.to_path_buf(), Arc::clone(&validator));
+    Ok(validator)
+}
+
+fn validate_json(schema_path: &Path, bytes: &[u8], origin: &str) -> Result<(), String> {
     let instance: serde_json::Value =
         serde_json::from_slice(bytes).map_err(|e| format!("{origin} is not valid JSON: {e}"))?;
 
-    let validator = jsonschema::options()
-        .with_retriever(VendoredSchemas)
-        .build(&schema)
-        .map_err(|e| format!("{schema_path:?} is not a usable JSON Schema: {e}"))?;
+    let validator = validator_for(schema_path)?;
 
     let problems: Vec<String> = validator
         .iter_errors(&instance)

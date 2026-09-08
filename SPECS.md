@@ -107,7 +107,7 @@ mechanical mapping exists. These cases get their own **format identifier**:
 
 | Case | Nature of the break |
 |---|---|
-| SPDX 2.x → **3.0** | moves to an RDF graph model serialized as JSON-LD, split into profiles (Core, Software, Security, Licensing, Build, AI, Dataset). Nothing in common with the flat 2.x document. |
+| SPDX 2.x → **3.0** | moves to an RDF graph model serialized as JSON-LD, split into profiles (Core, Software, Security, Licensing, Build, AI, Dataset). Nothing in common with the flat 2.x document. Implemented as `spdx3-json`, a separate format — `spdx-json@3.0` would promise a version bump where there is a rewrite. |
 | SARIF 1.0 → 2.x | `files` (dictionary) → `artifacts` (array), `resultFile` → `physicalLocation.artifactLocation`, `formattedRuleMessage` → `message.id` + `arguments`. Dead format in practice. |
 | SARIF 2.0 (drafts) → 2.1.0 | `resources.rules` → `tool.driver.rules`. |
 | Trivy `SchemaVersion` 1 → 2 | restructuring; only 2 exists in practice. |
@@ -433,7 +433,7 @@ Three constraints in those schemas shape the writers:
 | CycloneDX XML | ✅ | ✅ | 1.4, 1.5, 1.6. Same model and pivot as the JSON serialization; the spec version lives in the namespace |
 | SPDX JSON | ✅ | ✅ | 2.2 / 2.3. Elements are renamed on write: an SPDX id cannot hold a package URL's `:` and `/`, so the relationship graph is rewritten |
 | SPDX tag-value | 💭 | 💭 | |
-| SPDX 3.0 | 💭 | 💭 | deeply reworked model |
+| SPDX 3.0 | ✅ | ✅ | `spdx3-json`, 3.0.1. Its **own format id**, not a version of `spdx-json`: a graph of elements, not a document with arrays |
 | Syft JSON | 💭 | — | |
 | SWID | 💭 | — | |
 
@@ -458,8 +458,9 @@ Design notes that were open questions before CycloneDX landed:
 - **A version belongs to a family.** `SbomDoc` records *which format* a version came from, not
   just the version. `SPDX-2.3` means nothing to a CycloneDX writer, and a bare `spec_version`
   field would have let one adopt the other's the moment a second SBOM format arrived.
-- **Vocabularies must be canonicalized in the pivot, not at each boundary.** SPDX writes a hash
-  algorithm as `SHA256`, CycloneDX requires `SHA-256`. A pivot storing "whatever the source said"
+- **Vocabularies must be canonicalized in the pivot, not at each boundary.** SPDX 2 writes a hash
+  algorithm as `SHA256`, CycloneDX requires `SHA-256`, SPDX 3 writes `sha256` — three spellings of
+  one thing. A pivot storing "whatever the source said"
   made every SPDX → CycloneDX conversion emit a document that fails its own schema — found by the
   conversion matrix. The pivot now holds one spelling and each writer renders its own; where a
   target has no equivalent at all (CycloneDX defines no MD2, MD6, SHA-224 or ADLER32), the hash
@@ -561,6 +562,25 @@ write_notes, versions, default_version, read, write }`, and `registry::resolve` 
 adding one entry. Category consistency between input and output is checked before anything is
 read.
 
+### SPDX 3 is a different format, not a newer version
+
+`spdx3-json` has its own id, which is the rule from §3.4 applied: a version suffix promises a
+version bump, and SPDX 3 is a rewrite. Almost everything that was a field in SPDX 2 is now an
+element or an edge:
+
+| SPDX 2 | SPDX 3 |
+|---|---|
+| `packages[]` | `software_Package` elements in `@graph` |
+| `SPDXRef-Foo` | an IRI |
+| `licenseDeclared: "MIT"` | a `simplelicensing_LicenseExpression` element, reached by a `hasDeclaredLicense` relationship |
+| `supplier: "Organization: Acme"` | an `Agent` element, referenced by IRI |
+| `checksums[]` | `Hash` elements under `verifiedUsing` |
+| `"DEPENDS_ON"` | `"dependsOn"` |
+
+Writing it therefore mints an IRI for every element and rewrites the graph — the third time this
+project has had to rename identifiers on the way out, after SPDX 2's `SPDXRef-` ids and the
+hash-algorithm spellings.
+
 ## 7. Distribution
 
 - Targets: `x86_64-unknown-linux-musl`, `aarch64-unknown-linux-musl`, `x86_64-apple-darwin`,
@@ -586,6 +606,6 @@ read.
    Checkstyle that does not also read a better format.
 5. ✅ **Security** — SARIF and Trivy in; SARIF, GitLab SAST, dependency scanning and container
    scanning out. Grype, OSV and secret detection remain, on demand.
-6. ✅ **SBOM** — CycloneDX JSON, CycloneDX XML and SPDX JSON, all readable and writable. SPDX
-   tag-value and SPDX 3.0 remain, the latter as its own format id rather than a version.
+6. ✅ **SBOM** — CycloneDX JSON, CycloneDX XML, SPDX JSON and SPDX 3 JSON-LD, all readable and
+   writable, in every combination. SPDX tag-value remains, on demand.
 7. **Accessibility, performance** — on demand.
