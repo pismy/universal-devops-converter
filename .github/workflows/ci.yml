@@ -1,5 +1,8 @@
 name: CI
 
+# `main` is deliberately absent: a push there runs `release.yml`, which calls
+# the same checks before publishing. Running both would verify every release
+# commit twice, in parallel, for no added confidence.
 on:
   pull_request:
   push:
@@ -11,28 +14,4 @@ concurrency:
 
 jobs:
   verify:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy, rustfmt
-      - uses: Swatinem/rust-cache@v2
-      # `tests/conversion.rs` validates every XML report it writes against the
-      # vendored DTD/XSD. Without xmllint that half of the suite would skip, so
-      # `xmllint_is_available_in_ci` fails the build instead.
-      - name: Install xmllint
-        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
-      - name: Format
-        run: cargo fmt --check
-      - name: Clippy
-        run: cargo clippy --all-targets --locked -- -D warnings
-      - name: Test
-        run: cargo test --locked
-
-  shellcheck:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - name: Lint the install script
-        run: shellcheck install.sh .github/scripts/update-floating-tags.sh
+    uses: ./.github/workflows/verify.yml

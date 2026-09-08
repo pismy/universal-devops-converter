@@ -16,20 +16,18 @@ permissions:
 
 jobs:
   verify:
-    name: Verify
+    # The same checks `ci.yml` runs on every branch — format, lint, test and
+    # shellcheck — so a release is never held to a lower standard than a pull
+    # request. They live in `verify.yml` because `needs` cannot order one
+    # workflow after another: waiting on `ci.yml` would mean starting the
+    # release in parallel with it.
+    #
     # Custom skip marker: `[skip ci on main]` silences `release.yml` on its
     # own release commit without blocking other workflows (the native GitHub
     # `[skip ci]` would also skip the `push: tags` event that triggers
     # `publish-assets.yml`).
     if: ${{ !contains(github.event.head_commit.message, '[skip ci on main]') }}
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
-      - name: Install xmllint
-        run: sudo apt-get update && sudo apt-get install -y libxml2-utils
-      - run: cargo test --locked
+    uses: ./.github/workflows/verify.yml
 
   release:
     name: Release
