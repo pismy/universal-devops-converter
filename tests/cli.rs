@@ -19,12 +19,22 @@ fn run(args: &[&str], input: &str) -> Output {
         .stderr(Stdio::piped())
         .spawn()
         .expect("failed to spawn udc");
-    child
-        .stdin
-        .as_mut()
-        .expect("stdin is piped")
-        .write_all(input.as_bytes())
-        .expect("failed to write to stdin");
+    // Take the handle so it is closed once written: a run that does read stdin
+    // needs the EOF, and `wait_with_output` would otherwise be waiting on a
+    // pipe this side still holds open.
+    let mut stdin = child.stdin.take().expect("stdin is piped");
+    match stdin.write_all(input.as_bytes()) {
+        Ok(()) => {}
+        // Not a failure. `udc` validates its options before reading anything,
+        // so a run that rejects a bad option exits before the input arrives and
+        // the pipe closes under us. Which side wins that race depends on
+        // machine load — treating it as an error made these tests pass locally
+        // and fail in CI.
+        Err(e) if e.kind() == std::io::ErrorKind::BrokenPipe => {}
+        Err(e) => panic!("failed to write to udc's stdin: {e}"),
+    }
+    drop(stdin);
+
     child.wait_with_output().expect("failed to wait for udc")
 }
 
@@ -282,6 +292,22 @@ fn output_format_is_required() {
     let output = run(&[], LCOV);
     assert_eq!(output.status.code(), Some(1));
     assert!(stderr_of(&output).contains("--output-format is required"));
+}
+
+/// A failing run must not take the harness down with it.
+///
+/// `udc` rejects a bad option before reading stdin, so the pipe closes while
+/// the test is still writing. With a small input that is a race — it passed
+/// locally and failed in CI — so this sends more than a pipe buffer's worth,
+/// which makes the broken pipe certain rather than likely.
+#[test]
+fn a_large_input_to_a_failing_run_does_not_break_the_harness() {
+    let big = LCOV.repeat(4000);
+    assert!(big.len() > 256 * 1024, "must exceed any pipe buffer");
+
+    let output = run(&["-t", "auto"], &big);
+    assert_eq!(output.status.code(), Some(1));
+    assert!(stderr_of(&output).contains("cannot be 'auto'"));
 }
 
 #[test]
