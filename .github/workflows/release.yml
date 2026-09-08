@@ -24,7 +24,7 @@ jobs:
     if: ${{ !contains(github.event.head_commit.message, '[skip ci on main]') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
       - uses: Swatinem/rust-cache@v2
       - name: Install xmllint
@@ -37,7 +37,7 @@ jobs:
     needs: verify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           # Needed so @semantic-release/git can push the release commit AND
@@ -48,7 +48,7 @@ jobs:
           token: ${{ secrets.RELEASE_TOKEN }}
           persist-credentials: true
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: lts/*
 

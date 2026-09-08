@@ -1,0 +1,32 @@
+# Keeps the pins in this repository current, so an upgrade is a reviewed pull
+# request rather than an archaeology session six months later.
+#
+# Not covered here: the semantic-release packages installed by `release.yml`.
+# Dependabot needs a manifest to track npm dependencies, and that workflow
+# installs them with `npm install --no-save` and no package.json. Adding one
+# just for Dependabot would move the release's dependency list away from the
+# workflow that uses it; they are checked by hand instead.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      # One pull request for the routine bumps; a major still comes on its own,
+      # because that is the one worth reading.
+      actions-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      prefix: ci
+
+  - package-ecosystem: cargo
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      cargo-minor-and-patch:
+        update-types: [minor, patch]
+    commit-message:
+      # `build` rather than `chore`: these change what ships in the binary.
+      prefix: build
